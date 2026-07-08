@@ -90,26 +90,23 @@ def meta_ads_diario(dias: int = 30) -> pd.DataFrame:
 # Google Analytics 4
 # --------------------------------------------------------------------------- #
 def ga4_diario(dias: int = 30) -> pd.DataFrame:
+    """Tráfico de ejemplo de las 5 landings WeRise (por programa)."""
+    from src.config import LANDING_PROGRAMA
+
     fechas = _rango_fechas(dias)
-    canales = {
-        "Paid Search": dict(base=180, cvr=0.03),
-        "Paid Social": dict(base=260, cvr=0.035),
-        "Organic Search": dict(base=140, cvr=0.02),
-        "Direct": dict(base=90, cvr=0.015),
-        "Referral": dict(base=40, cvr=0.02),
-    }
     filas = []
-    for canal, pf in canales.items():
-        r = _rng("ga4" + canal)
+    for landing, programa in LANDING_PROGRAMA.items():
+        r = _rng("ga4" + landing)
+        base = r.uniform(25, 90)
         for f in fechas:
-            sesiones = max(0, int(r.normal(pf["base"], pf["base"] * 0.25)))
-            usuarios = int(sesiones * r.uniform(0.7, 0.9))
-            conversiones = int(sesiones * pf["cvr"] * r.uniform(0.6, 1.4))
+            sesiones = max(0, int(r.normal(base, base * 0.3)))
+            usuarios = int(sesiones * r.uniform(0.75, 0.95))
+            vistas = int(sesiones * r.uniform(1.1, 1.6))
             filas.append(dict(
-                fecha=f, canal=canal, sesiones=sesiones, usuarios=usuarios,
-                conversiones=conversiones,
-                rebote=round(r.uniform(0.35, 0.65), 3),
-                duracion_media=round(r.uniform(45, 180), 0),
+                fecha=f, landing=landing, programa=programa,
+                sesiones=sesiones, usuarios=usuarios, vistas=vistas,
+                rebote=round(r.uniform(0.35, 0.70), 3),
+                duracion_media=round(r.uniform(30, 150), 0),
             ))
     return pd.DataFrame(filas)
 

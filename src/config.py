@@ -150,6 +150,29 @@ def programa_por_curso(uvic_curso: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# GA4 — landings de cada programa (solo se muestra el tráfico de estas 5 URLs)
+# Dominio: https://cloud.info-uvic.cat  (en GA4 el pagePath es solo la ruta)
+# --------------------------------------------------------------------------- #
+LANDING_PROGRAMA = {
+    "/master-executive-mba-uvic": "MBA Executive",
+    "/master-sport-management-uvic": "Marketing Deportivo",
+    "/Postgrau-Documental-Social": "Documentación Social",
+    "/Comunicacio-Cientifica": "Comunicación Científica",
+    "/Lideratge-entorns-IA": "Liderazgo IA",
+}
+LANDINGS = list(LANDING_PROGRAMA.keys())
+
+
+def programa_por_landing(page_path: str) -> str:
+    """Mapea la ruta de una landing (GA4 pagePath/landingPage) a su programa."""
+    if not page_path:
+        return "Sin asignar"
+    # normaliza: quita query string y barra final
+    p = page_path.split("?")[0].rstrip("/") or "/"
+    return LANDING_PROGRAMA.get(p, "Sin asignar")
+
+
+# --------------------------------------------------------------------------- #
 # HubSpot — Pipeline UVIC y etapas del embudo (portal 144637943)
 # --------------------------------------------------------------------------- #
 HUBSPOT_PIPELINE_UVIC = "3920516288"

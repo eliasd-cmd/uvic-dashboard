@@ -55,6 +55,8 @@ def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
     from google.analytics.data_v1beta.types import (  # type: ignore
         DateRange,
         Dimension,
+        Filter,
+        FilterExpression,
         Metric,
         RunReportRequest,
     )
@@ -69,31 +71,41 @@ def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
             dict(creds["service_account"])
         )
     client = BetaAnalyticsDataClient(credentials=credentials)
-
     property_id = creds.get("property_id", config.GA4_PROPERTY_ID)
+
+    # Solo el tráfico de las 5 landings de los programas WeRise.
+    filtro = FilterExpression(
+        filter=Filter(
+            field_name="landingPage",
+            in_list_filter=Filter.InListFilter(values=config.LANDINGS),
+        )
+    )
     request = RunReportRequest(
         property=property_id,
-        dimensions=[Dimension(name="date"), Dimension(name="sessionDefaultChannelGroup")],
+        dimensions=[Dimension(name="date"), Dimension(name="landingPage")],
         metrics=[
             Metric(name="sessions"),
             Metric(name="totalUsers"),
-            Metric(name="conversions"),
+            Metric(name="screenPageViews"),
             Metric(name="bounceRate"),
             Metric(name="averageSessionDuration"),
         ],
         date_ranges=[DateRange(start_date=f"{dias}daysAgo", end_date="today")],
+        dimension_filter=filtro,
     )
     resp = client.run_report(request)
     filas = []
     for row in resp.rows:
         d = row.dimension_values
         m = row.metric_values
+        landing = d[1].value
         filas.append(dict(
             fecha=pd.to_datetime(d[0].value).date(),
-            canal=d[1].value,
+            landing=landing,
+            programa=config.programa_por_landing(landing),
             sesiones=int(m[0].value or 0),
             usuarios=int(m[1].value or 0),
-            conversiones=int(float(m[2].value or 0)),
+            vistas=int(float(m[2].value or 0)),
             rebote=round(float(m[3].value or 0), 3),
             duracion_media=round(float(m[4].value or 0), 0),
         ))
