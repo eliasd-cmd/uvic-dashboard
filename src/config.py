@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 # El MCC de login puede ser Nuclio (3963262878) o "UVic MCC - Rise Marketing"
 # (9010916591) según con qué credenciales se autentique la API directa.
 GOOGLE_ADS_CUSTOMER_ID = "2970533333"
-GOOGLE_ADS_LOGIN_CUSTOMER_ID = "3963262878"  # MCC de login (ajustar si procede)
+GOOGLE_ADS_LOGIN_CUSTOMER_ID = "4885772142"  # MCC - Rise Marketing (gestiona UVic)
 
 # Meta Ads: cuenta publicitaria UVic-UCC.
 META_AD_ACCOUNT_ID = "act_33542477"
