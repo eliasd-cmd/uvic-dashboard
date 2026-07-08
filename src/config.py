@@ -54,6 +54,14 @@ TASA_LEAD_A_MATRICULA = 0.06  # 6%
 MONEDA = "EUR"
 SIMBOLO_MONEDA = "€"
 
+# --------------------------------------------------------------------------- #
+# Caché (segundos). HubSpot cambia a diario -> refresco corto. Los ads cambian
+# despacio y sus APIs tienen cuotas -> refresco más largo.
+# --------------------------------------------------------------------------- #
+CACHE_TTL_HUBSPOT = 300   # 5 min
+CACHE_TTL_ADS = 1800      # 30 min
+CACHE_TTL_GA4 = 1800      # 30 min
+
 
 # --------------------------------------------------------------------------- #
 # Mapeo de campañas WeRise  ->  programa académico
@@ -122,6 +130,12 @@ def programa_por_campana(nombre_campana: str) -> str:
             if n.startswith(c.lower()) or c.lower() in n:
                 return p.nombre
     return "Otras / Branding"
+
+
+def es_campana_werise(nombre_campana: str) -> bool:
+    """True si la campaña pertenece a uno de los 5 programas WeRise (para acotar
+    los datos en vivo de Google/Meta al scope del dashboard)."""
+    return programa_por_campana(nombre_campana) not in ("Otras / Branding", "Sin asignar")
 
 
 def programa_por_curso(uvic_curso: str) -> str:

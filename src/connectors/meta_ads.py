@@ -68,6 +68,9 @@ def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
         resp.raise_for_status()
         data = resp.json()
         for row in data.get("data", []):
+            nombre = row.get("campaign_name", "")
+            if not config.es_campana_werise(nombre):
+                continue  # acotamos al scope WeRise del dashboard
             leads = 0
             for a in row.get("actions", []):
                 if a.get("action_type") in ("lead", "offsite_conversion.fb_pixel_lead"):
@@ -75,7 +78,7 @@ def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
             filas.append(dict(
                 fecha=pd.to_datetime(row["date_start"]).date(),
                 plataforma="Meta Ads",
-                campana=row.get("campaign_name", ""),
+                campana=nombre,
                 impresiones=int(row.get("impressions", 0)),
                 clics=int(row.get("clicks", 0)),
                 coste=round(float(row.get("spend", 0)), 2),

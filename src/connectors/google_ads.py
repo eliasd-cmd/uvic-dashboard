@@ -82,10 +82,13 @@ def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
     filas = []
     for batch in ga_service.search_stream(customer_id=customer_id, query=query):
         for row in batch.results:
+            nombre = row.campaign.name
+            if not config.es_campana_werise(nombre):
+                continue  # acotamos al scope WeRise del dashboard
             filas.append(dict(
                 fecha=pd.to_datetime(row.segments.date).date(),
                 plataforma="Google Ads",
-                campana=row.campaign.name,
+                campana=nombre,
                 impresiones=int(row.metrics.impressions),
                 clics=int(row.metrics.clicks),
                 coste=round(row.metrics.cost_micros / 1_000_000, 2),
