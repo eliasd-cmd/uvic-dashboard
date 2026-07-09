@@ -56,18 +56,69 @@ def aviso_origenes(origenes: dict) -> None:
         )
 
 
-def kpi(col, titulo: str, valor: str, sub: str = "", estado: str | None = None) -> None:
-    """Tarjeta KPI con borde de color según estado (ok/warn/off)."""
+def kpi(col, titulo: str, valor: str, sub: str = "", estado: str | None = None,
+        delta: float | None = None, delta_bueno: bool = True) -> None:
+    """Tarjeta KPI con borde de color (ok/warn/off) y, opcionalmente, una flecha
+    de tendencia (delta = variación vs. mitad anterior del periodo)."""
     borde = {"ok": TEMA.verde_ok, "warn": TEMA.ambar_riesgo,
              "off": TEMA.rojo_off}.get(estado, TEMA.primario)
+    delta_html = ""
+    if delta is not None:
+        flecha = "▲" if delta >= 0 else "▼"
+        positivo = (delta >= 0) == delta_bueno
+        color = TEMA.verde_ok if positivo else TEMA.rojo_off
+        delta_html = (f'<span style="color:{color};font-weight:700;font-size:.78rem">'
+                      f'{flecha} {abs(delta)*100:.0f}%</span> ')
     col.markdown(
         f"""<div class="kpi-card" style="border-left-color:{borde}">
               <h3>{titulo}</h3>
               <div class="val">{valor}</div>
-              <div class="sub">{sub}</div>
+              <div class="sub">{delta_html}{sub}</div>
             </div>""",
         unsafe_allow_html=True,
     )
+
+
+def caja_insights(wins: list[str], concerns: list[str]) -> None:
+    """Dos columnas: 'Lo que funciona' (verde) y 'A mejorar' (rojo)."""
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("##### ✅ Lo que funciona")
+        for w in (wins[:5] or ["—"]):
+            st.markdown(f"- {w}")
+    with c2:
+        st.markdown("##### ⚠️ A mejorar")
+        for c in (concerns[:5] or ["Sin alertas relevantes en el periodo."]):
+            st.markdown(f"- {c}")
+
+
+def tabla_recomendaciones(recos: list[dict]) -> None:
+    """Recomendaciones priorizadas por impacto/esfuerzo (matriz 2x2)."""
+    if not recos:
+        st.info("Sin recomendaciones para el periodo.")
+        return
+    # dedup por texto conservando orden
+    vistos, unicas = set(), []
+    for r in recos:
+        if r["texto"] not in vistos:
+            vistos.add(r["texto"]); unicas.append(r)
+
+    def prio(r: dict) -> tuple[int, str]:
+        if r["impacto"] == "Alto" and r["esfuerzo"] == "Bajo":
+            return (0, "🔴 Hacer ya")
+        if r["impacto"] == "Alto":
+            return (1, "🟠 Prioritario")
+        if r["impacto"] == "Medio":
+            return (2, "🟡 Siguiente sprint")
+        return (3, "⚪ Si hay tiempo")
+
+    filas = []
+    for r in unicas:
+        orden, etiqueta = prio(r)
+        filas.append(dict(_o=orden, Recomendación=r["texto"], Impacto=r["impacto"],
+                          Esfuerzo=r["esfuerzo"], Prioridad=etiqueta))
+    df = pd.DataFrame(filas).sort_values("_o").drop(columns="_o")
+    st.dataframe(df, width='stretch', hide_index=True)
 
 
 # --------------------------------------------------------------------------- #

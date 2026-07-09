@@ -116,6 +116,9 @@ def cruce_inversion_leads(df_ads: pd.DataFrame, df_leads: pd.DataFrame,
     m["leads"] = m["leads"].fillna(0).astype(int)
     m["matriculas"] = m["matriculas"].fillna(0).astype(int)
 
+    m["ctr"] = m.apply(lambda r: _safe_div(r.get("clics", 0), r.get("impresiones", 0)), axis=1)
+    m["cpc"] = m.apply(lambda r: _safe_div(r["coste"], r.get("clics", 0)), axis=1)
+    m["conv_click_lead"] = m.apply(lambda r: _safe_div(r["leads"], r.get("clics", 0)), axis=1)
     m["cpl"] = m.apply(lambda r: _safe_div(r["coste"], r["leads"]), axis=1)
     m["cp_matricula"] = m.apply(lambda r: _safe_div(r["coste"], r["matriculas"]), axis=1)
     m["ingresos"] = m["matriculas"] * config.VALOR_MATRICULA
@@ -139,6 +142,13 @@ def kpis_globales(df_ads: pd.DataFrame, df_leads: pd.DataFrame,
     else:
         inversion = 0.0
 
+    # Clics/impresiones de las campañas WeRise (para CTR/CPC globales).
+    clics = impresiones = 0
+    if not df_ads.empty:
+        werise = ads[ads["programa"] != "Otras / Branding"]
+        clics = int(werise["clics"].sum())
+        impresiones = int(werise["impresiones"].sum())
+
     leads_total = int(len(df_leads)) if not df_leads.empty else 0
     leads_con_programa = (
         int((df_leads["programa"] != "Sin asignar").sum()) if not df_leads.empty else 0
@@ -153,12 +163,22 @@ def kpis_globales(df_ads: pd.DataFrame, df_leads: pd.DataFrame,
 
     cpl_neto = _safe_div(inversion, leads_total)
     cp_matricula = _safe_div(inversion, matriculas)
+    coste_por_oportunidad = _safe_div(inversion, deals_totales)
     roas = _safe_div(ingresos, inversion)
     pct_programa = _safe_div(leads_con_programa, leads_total)
+    ctr_medio = _safe_div(clics, impresiones)
+    cpc_medio = _safe_div(inversion, clics)
+    tasa_click_lead = _safe_div(leads_total, clics)       # clic -> lead
+    tasa_lead_oportunidad = _safe_div(deals_totales, leads_total)
+    tasa_lead_matricula = _safe_div(matriculas, leads_total)
     matriculas_forecast = leads_total * config.TASA_LEAD_A_MATRICULA
 
     return dict(
         inversion=inversion,
+        clics=clics,
+        impresiones=impresiones,
+        ctr_medio=ctr_medio,
+        cpc_medio=cpc_medio,
         leads_total=leads_total,
         leads_con_programa=leads_con_programa,
         pct_programa=pct_programa,
@@ -168,10 +188,50 @@ def kpis_globales(df_ads: pd.DataFrame, df_leads: pd.DataFrame,
         ingresos=ingresos,
         cpl_neto=cpl_neto,
         cp_matricula=cp_matricula,
+        coste_por_oportunidad=coste_por_oportunidad,
         roas=roas,
+        tasa_click_lead=tasa_click_lead,
+        tasa_lead_oportunidad=tasa_lead_oportunidad,
+        tasa_lead_matricula=tasa_lead_matricula,
         objetivo_matriculas=config.OBJETIVO_MATRICULAS,
         objetivo_inversion=config.OBJETIVO_INVERSION_MENSUAL,
     )
+
+
+# --------------------------------------------------------------------------- #
+# Tendencia (2ª mitad del periodo vs 1ª) — para flechas de KPI
+# --------------------------------------------------------------------------- #
+def tendencia(df: pd.DataFrame, valor_col: str, fecha_col: str = "fecha") -> dict:
+    """Compara la mitad reciente del periodo con la anterior. Devuelve
+    {delta, actual, previo, dir}. delta=None si no hay datos suficientes."""
+    vacio = dict(delta=None, actual=0.0, previo=0.0, dir="flat")
+    if df is None or df.empty or fecha_col not in df or valor_col not in df:
+        return vacio
+    s = df.groupby(fecha_col)[valor_col].sum().sort_index()
+    if len(s) < 2:
+        return dict(delta=None, actual=float(s.sum()), previo=0.0, dir="flat")
+    corte = len(s) // 2
+    previo = float(s.iloc[:corte].sum())
+    actual = float(s.iloc[corte:].sum())
+    delta = (actual - previo) / previo if previo else None
+    direccion = "flat" if delta is None else ("up" if delta > 0.02 else ("down" if delta < -0.02 else "flat"))
+    return dict(delta=delta, actual=actual, previo=previo, dir=direccion)
+
+
+# --------------------------------------------------------------------------- #
+# Tasas de conversión entre etapas del embudo
+# --------------------------------------------------------------------------- #
+def tasas_embudo(df_deals: pd.DataFrame) -> pd.DataFrame:
+    """Embudo con la tasa de paso desde la etapa anterior (conv_paso)."""
+    e = embudo(df_deals)
+    if e.empty:
+        return e
+    e = e.copy()
+    prev = e["leads"].shift(1)
+    e["conv_paso"] = e["leads"] / prev
+    e.loc[e.index[0], "conv_paso"] = 1.0
+    e["conv_paso"] = e["conv_paso"].fillna(0.0)
+    return e
 
 
 # --------------------------------------------------------------------------- #

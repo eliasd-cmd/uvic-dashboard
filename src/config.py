@@ -55,6 +55,33 @@ MONEDA = "EUR"
 SIMBOLO_MONEDA = "€"
 
 # --------------------------------------------------------------------------- #
+# Benchmarks para el semáforo (verde/ámbar/rojo). Alineados con la skill de
+# performance-report y ajustados al sector educación/captación. Editables.
+#   mejor='alto'  -> ok si valor >= ok;  warn si valor >= warn;  si no, off
+#   mejor='bajo'  -> ok si valor <= ok;  warn si valor <= warn;  si no, off
+# --------------------------------------------------------------------------- #
+BENCH = {
+    "ctr_search":  dict(mejor="alto", ok=0.04,  warn=0.02),   # CTR búsqueda (Google)
+    "ctr_social":  dict(mejor="alto", ok=0.009, warn=0.005),  # CTR social (Meta)
+    "cpc_search":  dict(mejor="bajo", ok=1.5,   warn=3.0),
+    "cpc_social":  dict(mejor="bajo", ok=0.70,  warn=1.20),
+    "cpm_social":  dict(mejor="bajo", ok=5.0,   warn=10.0),
+    "rebote":      dict(mejor="bajo", ok=0.45,  warn=0.60),
+    "cpl":         dict(mejor="bajo", ok=CPL_OBJETIVO, warn=CPL_OBJETIVO * 2),
+    "roas":        dict(mejor="alto", ok=3.0,   warn=1.0),
+}
+
+
+def estado_bench(tipo: str, valor: float | None) -> str | None:
+    """Devuelve 'ok'|'warn'|'off' según el benchmark, o None si no aplica."""
+    b = BENCH.get(tipo)
+    if not b or valor is None or valor == 0:
+        return None
+    if b["mejor"] == "alto":
+        return "ok" if valor >= b["ok"] else ("warn" if valor >= b["warn"] else "off")
+    return "ok" if valor <= b["ok"] else ("warn" if valor <= b["warn"] else "off")
+
+# --------------------------------------------------------------------------- #
 # Caché (segundos). HubSpot cambia a diario -> refresco corto. Los ads cambian
 # despacio y sus APIs tienen cuotas -> refresco más largo.
 # --------------------------------------------------------------------------- #

@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import streamlit as st
 
-from src.data import loader
+from src import config
+from src.data import loader, metrics
 from src.ui import components as ui
 from src.ui.theme import aplicar_tema, num, pct
 
@@ -26,31 +27,42 @@ tot_ses = int(df["sesiones"].sum())
 tot_usr = int(df["usuarios"].sum())
 tot_vis = int(df["vistas"].sum()) if "vistas" in df else 0
 rebote = df["rebote"].mean() if "rebote" in df else 0
+pags_ses = tot_vis / tot_ses if tot_ses else 0
+t_ses = metrics.tendencia(df, "sesiones", "fecha")
 
 c1, c2, c3, c4 = st.columns(4)
-ui.kpi(c1, "Sesiones", num(tot_ses))
-ui.kpi(c2, "Usuarios", num(tot_usr))
-ui.kpi(c3, "Páginas vistas", num(tot_vis))
-ui.kpi(c4, "Rebote medio", pct(rebote))
+ui.kpi(c1, "Sesiones", num(tot_ses), delta=t_ses["delta"], delta_bueno=True)
+ui.kpi(c2, "Usuarios", num(tot_usr), "Únicos")
+ui.kpi(c3, "Páginas / sesión", f"{pags_ses:.2f}", "Profundidad de visita")
+ui.kpi(c4, "Rebote medio", pct(rebote), f"Benchmark ≤ {pct(config.BENCH['rebote']['ok'],0)}",
+       estado=config.estado_bench("rebote", rebote))
+
+# --- Observaciones ---------------------------------------------------------- #
+por_prog = df.groupby("programa", as_index=False).agg(
+    sesiones=("sesiones", "sum"), rebote=("rebote", "mean"))
+wins, concerns = [], []
+if not por_prog.empty:
+    top = por_prog.sort_values("sesiones", ascending=False).iloc[0]
+    wins.append(f"Landing con más tráfico: **{top['programa']}** ({num(int(top['sesiones']))} sesiones).")
+    peor = por_prog.sort_values("rebote", ascending=False).iloc[0]
+    if config.estado_bench("rebote", peor["rebote"]) == "off":
+        concerns.append(f"Rebote alto en **{peor['programa']}** ({pct(peor['rebote'])}): revisa coherencia anuncio→landing, velocidad y CTA.")
+ui.caja_insights(wins, concerns)
 
 st.divider()
 
 st.subheader("Sesiones diarias por programa")
 serie = df.groupby(["fecha", "programa"], as_index=False)["sesiones"].sum()
-ui.linea_temporal(serie, x="fecha", y="sesiones", color="programa",
-                  titulo="", y_label="Sesiones")
+ui.linea_temporal(serie, x="fecha", y="sesiones", color="programa", titulo="", y_label="Sesiones")
 
 col_a, col_b = st.columns(2)
 with col_a:
     st.subheader("Sesiones por programa")
-    por_prog = (df.groupby("programa", as_index=False)["sesiones"].sum()
-                  .sort_values("sesiones"))
-    ui.barras(por_prog, x="sesiones", y="programa", color=None,
-              titulo="", orientacion="h")
+    ui.barras(por_prog.sort_values("sesiones"), x="sesiones", y="programa",
+              color=None, titulo="", orientacion="h")
 with col_b:
     st.subheader("Reparto de tráfico")
-    ui.donut(df.groupby("programa", as_index=False)["sesiones"].sum(),
-             nombres="programa", valores="sesiones", titulo="")
+    ui.donut(por_prog, nombres="programa", valores="sesiones", titulo="")
 
 st.subheader("Detalle por landing")
 detalle = df.groupby(["programa", "landing"], as_index=False).agg(
@@ -74,7 +86,6 @@ st.dataframe(
     },
 )
 st.caption(
-    "Solo se muestra el tráfico de las 5 landings de programa en "
-    "`cloud.info-uvic.cat`. Los leads/conversiones se miden en HubSpot "
-    "(ver página *Leads*), no aquí."
+    "Solo tráfico de las 5 landings de programa en `cloud.info-uvic.cat`. "
+    "Los leads/conversiones se miden en HubSpot (página *Leads*)."
 )
