@@ -143,6 +143,46 @@ def hubspot_leads(dias: int = 30) -> pd.DataFrame:
     return pd.DataFrame(filas)
 
 
+def import_leads(dias: int = 30) -> pd.DataFrame:
+    """Leads importados de ejemplo (control aparte)."""
+    fechas = _rango_fechas(dias)
+    r = _rng("import-leads")
+    estados = ["Lead", "MQL", "SQL", "Oportunidad", "Descartado"]
+    programas = [p.nombre for p in PROGRAMAS]
+    filas = []
+    for i in range(40):
+        filas.append(dict(
+            lead_id=f"I{9000+i}",
+            nombre=f"Lead importado {i+1}",
+            email=f"importado{i+1}@ejemplo.com",
+            fecha_creacion=fechas[r.integers(0, len(fechas))],
+            programa=programas[r.integers(0, len(programas))],
+            nivel="Master",
+            estado=estados[r.integers(0, len(estados))],
+            lead_status="",
+            n_negocios=int(r.integers(0, 2)),
+        ))
+    return pd.DataFrame(filas)
+
+
+def import_negocios(dias: int = 30) -> pd.DataFrame:
+    """Negocios de ejemplo de leads importados."""
+    fechas = _rango_fechas(dias)
+    r = _rng("import-negocios")
+    filas = []
+    for i in range(8):
+        filas.append(dict(
+            deal_id=f"ID{7000+i}",
+            contacto=f"I{9000+i}",
+            dealname=f"Negocio importado {i+1}",
+            pipeline="Pipeline de ventas",
+            etapa=["Cita programada", "Nuevo lead", "En estudio"][r.integers(0, 3)],
+            importe=0.0,
+            fecha_creacion=fechas[r.integers(0, len(fechas))],
+        ))
+    return pd.DataFrame(filas)
+
+
 def hubspot_deals(dias: int = 30) -> pd.DataFrame:
     """Deals de ejemplo del Pipeline UVIC, con etapa y programa."""
     from src.config import HUBSPOT_ETAPAS_UVIC

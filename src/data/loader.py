@@ -4,7 +4,7 @@ un objeto único `DatosDashboard` que consumen todas las páginas.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pandas as pd
 import streamlit as st
@@ -21,6 +21,9 @@ class DatosDashboard:
     leads: pd.DataFrame
     deals: pd.DataFrame
     origenes: dict  # {"Google Ads": "sample", ...}
+    leads_import: pd.DataFrame = field(default_factory=pd.DataFrame)
+    negocios_import: pd.DataFrame = field(default_factory=pd.DataFrame)
+    origen_import: str = "sample"
 
     @property
     def ads(self) -> pd.DataFrame:
@@ -58,11 +61,18 @@ def _cargar_hubspot(dias: int):
     return leads.df, leads.origen, deals.df
 
 
+@st.cache_data(ttl=config.CACHE_TTL_HUBSPOT, show_spinner="Cargando leads importados…")
+def _cargar_importados():
+    leads_i, negocios_i, origen_i = hubspot.importados()
+    return leads_i, negocios_i, origen_i
+
+
 def cargar_todo(dias: int = 30) -> DatosDashboard:
     g_df, g_o = _cargar_google(dias)
     m_df, m_o = _cargar_meta(dias)
     a_df, a_o = _cargar_ga4(dias)
     l_df, l_o, d_df = _cargar_hubspot(dias)
+    li_df, ni_df, oi = _cargar_importados()
     return DatosDashboard(
         google=g_df, meta=m_df, ga4=a_df, leads=l_df, deals=d_df,
         origenes={
@@ -71,4 +81,5 @@ def cargar_todo(dias: int = 30) -> DatosDashboard:
             "Google Analytics": a_o,
             "HubSpot": l_o,
         },
+        leads_import=li_df, negocios_import=ni_df, origen_import=oi,
     )

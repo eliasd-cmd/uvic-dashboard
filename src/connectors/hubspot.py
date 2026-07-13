@@ -242,3 +242,146 @@ def _programa_por_deal(token: str, deal_ids: list[str]) -> dict:
         did: config.programa_por_curso(curso_por_contacto.get(cid, ""))
         for did, cid in deal_to_contact.items()
     }
+
+
+# --------------------------------------------------------------------------- #
+# Leads IMPORTADOS (control aparte) — contactos uvic_curso con fuente = IMPORT.
+# No llevan filtro de fecha: se listan TODOS, y los nuevos IMPORT caen aquí solos.
+# --------------------------------------------------------------------------- #
+def importados():
+    """Devuelve (leads_import_df, negocios_import_df, origen)."""
+    creds = _leer_secreto("hubspot")
+    if creds and creds.get("access_token"):
+        try:
+            leads, negocios = _fetch_importados(creds)
+            guardar_cache(leads, "hubspot_import_leads")
+            guardar_cache(negocios, "hubspot_import_negocios")
+            return leads, negocios, "api"
+        except Exception:  # noqa: BLE001
+            lc = leer_cache("hubspot_import_leads")
+            if lc is not None:
+                dc = leer_cache("hubspot_import_negocios")
+                return lc, (dc if dc is not None else pd.DataFrame()), "cache"
+
+    lc = leer_cache("hubspot_import_leads")
+    if lc is not None and not lc.empty:
+        dc = leer_cache("hubspot_import_negocios")
+        return lc, (dc if dc is not None else pd.DataFrame()), "cache"
+    return sample_data.import_leads(), sample_data.import_negocios(), "sample"
+
+
+def _mapa_etapas_deals(token: str) -> dict:
+    """Mapa {stage_id: etiqueta} y {pipeline_id: etiqueta} de todos los pipelines."""
+    import requests
+    stages, pipelines = {}, {}
+    try:
+        r = requests.get(f"{API}/crm/v3/pipelines/deals", headers=_headers(token), timeout=60)
+        r.raise_for_status()
+        for p in r.json().get("results", []):
+            pipelines[p["id"]] = p.get("label", p["id"])
+            for s in p.get("stages", []):
+                stages[s["id"]] = s.get("label", s["id"])
+    except Exception:  # noqa: BLE001
+        pass
+    return {"stages": stages, "pipelines": pipelines}
+
+
+def _fetch_importados(creds: dict):
+    import requests
+    token = creds["access_token"]
+    mapa = _mapa_etapas_deals(token)
+
+    payload = {
+        "filterGroups": [{
+            "filters": [
+                {"propertyName": "uvic_curso", "operator": "HAS_PROPERTY"},
+                {"propertyName": "hs_object_source", "operator": "EQ", "value": "IMPORT"},
+            ]
+        }],
+        "properties": ["uvic_curso", "uvic_nivel_estudios", "createdate", "lifecyclestage",
+                       "hs_lead_status", "firstname", "lastname", "email", "num_associated_deals"],
+        "limit": 100,
+    }
+    contactos, after = [], None
+    while True:
+        if after:
+            payload["after"] = after
+        r = requests.post(f"{API}/crm/v3/objects/contacts/search",
+                          headers=_headers(token), json=payload, timeout=60)
+        r.raise_for_status()
+        data = r.json()
+        contactos.extend(data.get("results", []))
+        after = data.get("paging", {}).get("next", {}).get("after")
+        if not after:
+            break
+
+    filas = []
+    for c in contactos:
+        p = c.get("properties", {})
+        nombre = f"{p.get('firstname','') or ''} {p.get('lastname','') or ''}".strip()
+        filas.append(dict(
+            lead_id=c.get("id"),
+            nombre=nombre or (p.get("email") or "—"),
+            email=p.get("email") or "",
+            fecha_creacion=_a_fecha(p.get("createdate")),
+            programa=config.programa_por_curso(p.get("uvic_curso") or ""),
+            nivel=p.get("uvic_nivel_estudios") or "",
+            estado=MAPA_LIFECYCLE.get((p.get("lifecyclestage") or "").lower(), "Lead"),
+            lead_status=p.get("hs_lead_status") or "",
+            n_negocios=int(p.get("num_associated_deals") or 0),
+        ))
+    leads = pd.DataFrame(filas)
+
+    ids = [c["id"] for c in contactos]
+    negocios = _negocios_de_contactos(token, ids, mapa)
+    return leads, negocios
+
+
+def _negocios_de_contactos(token: str, contact_ids: list, mapa: dict) -> pd.DataFrame:
+    """Negocios (deals) asociados a una lista de contactos, con etapa y pipeline."""
+    import requests
+    if not contact_ids:
+        return pd.DataFrame()
+
+    # contacto -> deals
+    deal_to_contact, deal_ids = {}, set()
+    try:
+        r = requests.post(f"{API}/crm/v4/associations/contact/deal/batch/read",
+                          headers=_headers(token),
+                          json={"inputs": [{"id": i} for i in contact_ids]}, timeout=60)
+        r.raise_for_status()
+        for it in r.json().get("results", []):
+            frm = str(it.get("from", {}).get("id"))
+            for t in it.get("to", []):
+                did = str(t.get("toObjectId"))
+                deal_ids.add(did)
+                deal_to_contact.setdefault(did, frm)
+    except Exception:  # noqa: BLE001
+        return pd.DataFrame()
+    if not deal_ids:
+        return pd.DataFrame()
+
+    # deals -> propiedades
+    try:
+        r = requests.post(f"{API}/crm/v3/objects/deals/batch/read",
+                          headers=_headers(token),
+                          json={"properties": ["dealname", "dealstage", "pipeline", "amount", "createdate"],
+                                "inputs": [{"id": d} for d in deal_ids]}, timeout=60)
+        r.raise_for_status()
+        res = r.json().get("results", [])
+    except Exception:  # noqa: BLE001
+        return pd.DataFrame()
+
+    filas = []
+    for x in res:
+        p = x.get("properties", {})
+        filas.append(dict(
+            deal_id=x.get("id"),
+            contacto=deal_to_contact.get(str(x.get("id"))),
+            dealname=p.get("dealname") or "—",
+            pipeline=mapa["pipelines"].get(p.get("pipeline"), p.get("pipeline") or "—"),
+            etapa=mapa["stages"].get(p.get("dealstage"), p.get("dealstage") or "—"),
+            importe=float(p.get("amount") or 0),
+            fecha_creacion=_a_fecha(p.get("createdate")),
+        ))
+    return pd.DataFrame(filas)
