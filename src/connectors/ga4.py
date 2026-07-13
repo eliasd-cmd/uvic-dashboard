@@ -51,10 +51,11 @@ def obtener(dias: int = 30) -> ResultadoConector:
 
 
 def _cliente(creds: dict):
-    """Devuelve (client, property_id, FiltroLandings) reutilizable."""
+    """Devuelve (client, property_id, filtro) reutilizable. El filtro limita a
+    las 5 landings y EXCLUYE las fuentes de test (pixel-doctor, metaCLAUDETEST)."""
     from google.analytics.data_v1beta import BetaAnalyticsDataClient  # type: ignore
     from google.analytics.data_v1beta.types import (  # type: ignore
-        Filter, FilterExpression,
+        Filter, FilterExpression, FilterExpressionList,
     )
     from google.oauth2 import service_account  # type: ignore
 
@@ -66,9 +67,15 @@ def _cliente(creds: dict):
             dict(creds["service_account"]))
     client = BetaAnalyticsDataClient(credentials=credentials)
     property_id = creds.get("property_id", config.GA4_PROPERTY_ID)
-    filtro = FilterExpression(filter=Filter(
+
+    solo_landings = FilterExpression(filter=Filter(
         field_name="landingPage",
         in_list_filter=Filter.InListFilter(values=config.LANDINGS)))
+    excluir_tests = FilterExpression(not_expression=FilterExpression(filter=Filter(
+        field_name="sessionSource",
+        in_list_filter=Filter.InListFilter(values=config.GA4_FUENTES_EXCLUIR))))
+    filtro = FilterExpression(and_group=FilterExpressionList(
+        expressions=[solo_landings, excluir_tests]))
     return client, property_id, filtro
 
 

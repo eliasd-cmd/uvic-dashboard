@@ -79,30 +79,46 @@ def kpi(col, titulo: str, valor: str, sub: str = "", estado: str | None = None,
     )
 
 
+_LBL_TOTAL = {
+    "sesiones": "Sesiones", "usuarios": "Usuarios", "eventos": "Eventos",
+    "eventos_clave": "Eventos clave", "vistas": "Páginas vistas",
+    "rebote": "Rebote", "duracion_media": "Dur. media",
+}
+
+
 def tabla_totales(df: pd.DataFrame, columnas: list[str], sum_cols: list[str],
                   column_config: dict, weighted: list[str] | None = None,
                   weight_col: str = "sesiones") -> None:
-    """Muestra una tabla con una fila final **TOTAL** en negrita.
-    `sum_cols` se suman; `weighted` se promedian ponderando por `weight_col`."""
+    """Muestra la tabla y, debajo, un **pie de TOTAL fijo** (siempre visible,
+    fuera del scroll interno del grid). `sum_cols` se suman; `weighted` se
+    promedian ponderando por `weight_col`."""
     if df is None or df.empty:
         st.info("Sin datos.")
         return
     cols = [c for c in columnas if c in df.columns]
-    total = {c: "" for c in cols}
-    total[cols[0]] = "TOTAL"
+    st.dataframe(df[cols], width='stretch', hide_index=True, column_config=column_config)
+
+    partes = []
     for c in sum_cols:
         if c in df.columns:
-            total[c] = int(df[c].sum())
+            partes.append(f"{_LBL_TOTAL.get(c, c)} <strong>{num(int(df[c].sum()))}</strong>")
     if weighted and weight_col in df.columns:
         w = df[weight_col].sum()
         for c in weighted:
-            if c in df.columns:
-                total[c] = round((df[c] * df[weight_col]).sum() / w, 1) if w else 0
-    df2 = pd.concat([df[cols], pd.DataFrame([total])[cols]], ignore_index=True)
-    ult = len(df2) - 1
-    sty = df2.style.apply(
-        lambda row: ["font-weight: 700" if row.name == ult else "" for _ in row], axis=1)
-    st.dataframe(sty, width='stretch', hide_index=True, column_config=column_config)
+            if c not in df.columns:
+                continue
+            v = (df[c] * df[weight_col]).sum() / w if w else 0
+            if c == "rebote":
+                partes.append(f"{_LBL_TOTAL.get(c, c)} <strong>{v:.1f}%</strong>")
+            elif c == "duracion_media":
+                partes.append(f"{_LBL_TOTAL.get(c, c)} <strong>{v:.0f}s</strong>")
+            else:
+                partes.append(f"{_LBL_TOTAL.get(c, c)} <strong>{num(v)}</strong>")
+    st.markdown(
+        f"<div style='border-top:2px solid {TEMA.primario};padding:.45rem .2rem;margin-top:-.4rem'>"
+        f"🧮 <strong>TOTAL</strong> — {' · '.join(partes)}</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def caja_insights(wins: list[str], concerns: list[str]) -> None:
