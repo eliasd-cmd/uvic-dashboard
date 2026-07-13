@@ -111,10 +111,13 @@ def _fetch_leads(creds: dict, dias: int) -> pd.DataFrame:
             "filters": [
                 {"propertyName": "uvic_curso", "operator": "HAS_PROPERTY"},
                 {"propertyName": "createdate", "operator": "GTE", "value": str(_desde_ms(dias))},
+                # Excluir leads antiguos importados (no son de las campañas actuales).
+                {"propertyName": "hs_object_source", "operator": "NEQ", "value": "IMPORT"},
             ]
         }],
         "properties": ["uvic_curso", "uvic_nivel_estudios", "createdate",
-                       "lifecyclestage", "hs_lead_status", "hs_analytics_source"],
+                       "lifecyclestage", "hs_lead_status", "hs_analytics_source",
+                       "hs_object_source", "hs_analytics_source_data_1"],
         "limit": 100,
     }
     filas, after = [], None
@@ -127,6 +130,9 @@ def _fetch_leads(creds: dict, dias: int) -> pd.DataFrame:
         data = r.json()
         for c in data.get("results", []):
             p = c.get("properties", {})
+            # Segundo filtro (por si el server-side no lo cazó): descartar importados.
+            if p.get("hs_object_source") == "IMPORT" or p.get("hs_analytics_source_data_1") == "IMPORT":
+                continue
             curso = p.get("uvic_curso") or ""
             estado = MAPA_LIFECYCLE.get((p.get("lifecyclestage") or "").lower(), "Lead")
             filas.append(dict(
