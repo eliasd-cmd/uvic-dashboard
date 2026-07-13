@@ -117,9 +117,10 @@ if cg.empty:
     st.info("Sin datos de campaña.")
 else:
     st.dataframe(
-        cg[["campana", "sesiones", "usuarios", "eventos", "eventos_clave"]],
+        cg[["fuente", "campana", "sesiones", "usuarios", "eventos", "eventos_clave"]],
         width='stretch', hide_index=True,
         column_config={
+            "fuente": "Fuente",
             "campana": "Campaña",
             "sesiones": st.column_config.NumberColumn("Sesiones", format="%d"),
             "usuarios": st.column_config.NumberColumn("Usuarios", format="%d"),

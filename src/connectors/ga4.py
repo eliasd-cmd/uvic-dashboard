@@ -170,5 +170,5 @@ def obtener_fuente(dias: int = 30) -> ResultadoConector:
 
 def obtener_campana(dias: int = 30) -> ResultadoConector:
     return _obtener_agrupado(
-        dias, [("sessionCampaignName", "campana")],
+        dias, [("sessionSource", "fuente"), ("sessionCampaignName", "campana")],
         "ga4_campana", sample_data.ga4_por_campana)

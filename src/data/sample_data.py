@@ -127,13 +127,13 @@ def ga4_por_fuente(dias: int = 30) -> pd.DataFrame:
 
 
 def ga4_por_campana(dias: int = 30) -> pd.DataFrame:
-    """Tráfico de ejemplo por campaña de las 5 landings."""
+    """Tráfico de ejemplo por fuente + campaña de las 5 landings."""
     r = _rng("ga4-campana")
     filas = []
     for p in PROGRAMAS:
-        for camp in (p.campana_meta, p.campana_google):
+        for fuente, camp in (("meta", p.campana_meta), ("google", p.campana_google)):
             ses = int(r.uniform(20, 250))
-            filas.append(dict(campana=camp, sesiones=ses,
+            filas.append(dict(fuente=fuente, campana=camp, sesiones=ses,
                               usuarios=int(ses * r.uniform(0.8, 0.98)),
                               eventos=int(ses * r.uniform(3, 4)),
                               eventos_clave=int(ses * r.uniform(0.0, 0.05))))
