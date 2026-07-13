@@ -120,8 +120,17 @@ cg = datos.ga4_campana
 if cg.empty:
     st.info("Sin datos de campaña.")
 else:
+    fcol1, fcol2 = st.columns(2)
+    fuentes = sorted(cg["fuente"].dropna().unique()) if "fuente" in cg.columns else []
+    sel_f = fcol1.multiselect("Filtrar por fuente", fuentes, placeholder="Todas las fuentes")
+    cg_f = cg[cg["fuente"].isin(sel_f)] if sel_f else cg
+    campanas = sorted(cg_f["campana"].dropna().unique()) if "campana" in cg_f.columns else []
+    sel_c = fcol2.multiselect("Filtrar por campaña", campanas, placeholder="Todas las campañas")
+    if sel_c:
+        cg_f = cg_f[cg_f["campana"].isin(sel_c)]
+
     ui.tabla_totales(
-        cg,
+        cg_f,
         columnas=["fuente", "campana", "sesiones", "usuarios", "eventos", "eventos_clave"],
         sum_cols=["sesiones", "usuarios", "eventos", "eventos_clave"],
         column_config={
