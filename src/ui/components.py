@@ -79,6 +79,32 @@ def kpi(col, titulo: str, valor: str, sub: str = "", estado: str | None = None,
     )
 
 
+def tabla_totales(df: pd.DataFrame, columnas: list[str], sum_cols: list[str],
+                  column_config: dict, weighted: list[str] | None = None,
+                  weight_col: str = "sesiones") -> None:
+    """Muestra una tabla con una fila final **TOTAL** en negrita.
+    `sum_cols` se suman; `weighted` se promedian ponderando por `weight_col`."""
+    if df is None or df.empty:
+        st.info("Sin datos.")
+        return
+    cols = [c for c in columnas if c in df.columns]
+    total = {c: "" for c in cols}
+    total[cols[0]] = "TOTAL"
+    for c in sum_cols:
+        if c in df.columns:
+            total[c] = int(df[c].sum())
+    if weighted and weight_col in df.columns:
+        w = df[weight_col].sum()
+        for c in weighted:
+            if c in df.columns:
+                total[c] = round((df[c] * df[weight_col]).sum() / w, 1) if w else 0
+    df2 = pd.concat([df[cols], pd.DataFrame([total])[cols]], ignore_index=True)
+    ult = len(df2) - 1
+    sty = df2.style.apply(
+        lambda row: ["font-weight: 700" if row.name == ult else "" for _ in row], axis=1)
+    st.dataframe(sty, width='stretch', hide_index=True, column_config=column_config)
+
+
 def caja_insights(wins: list[str], concerns: list[str]) -> None:
     """Dos columnas: 'Lo que funciona' (verde) y 'A mejorar' (rojo)."""
     c1, c2 = st.columns(2)

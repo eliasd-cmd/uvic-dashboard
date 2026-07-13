@@ -73,8 +73,11 @@ detalle = df.groupby(["programa", "landing"], as_index=False).agg(
     duracion_media=("duracion_media", "mean"),
 ).sort_values("sesiones", ascending=False)
 detalle["rebote"] = (detalle["rebote"] * 100).round(1)  # ratio -> %
-st.dataframe(
-    detalle, width='stretch', hide_index=True,
+ui.tabla_totales(
+    detalle,
+    columnas=["programa", "landing", "sesiones", "usuarios", "vistas", "rebote", "duracion_media"],
+    sum_cols=["sesiones", "usuarios", "vistas"],
+    weighted=["rebote", "duracion_media"], weight_col="sesiones",
     column_config={
         "programa": "Programa",
         "landing": "Landing (ruta)",
@@ -98,11 +101,10 @@ fm = datos.ga4_fuente
 if fm.empty:
     st.info("Sin datos de fuente/medio.")
 else:
-    _cols_fm = [c for c in ["fuente", "medio", "sesiones", "usuarios", "eventos", "eventos_clave"]
-                if c in fm.columns]
-    st.dataframe(
-        fm[_cols_fm],
-        width='stretch', hide_index=True,
+    ui.tabla_totales(
+        fm,
+        columnas=["fuente", "medio", "sesiones", "usuarios", "eventos", "eventos_clave"],
+        sum_cols=["sesiones", "usuarios", "eventos", "eventos_clave"],
         column_config={
             "fuente": "Fuente", "medio": "Medio",
             "sesiones": st.column_config.NumberColumn("Sesiones", format="%d"),
@@ -118,11 +120,10 @@ cg = datos.ga4_campana
 if cg.empty:
     st.info("Sin datos de campaña.")
 else:
-    _cols_cg = [c for c in ["fuente", "campana", "sesiones", "usuarios", "eventos", "eventos_clave"]
-                if c in cg.columns]
-    st.dataframe(
-        cg[_cols_cg],
-        width='stretch', hide_index=True,
+    ui.tabla_totales(
+        cg,
+        columnas=["fuente", "campana", "sesiones", "usuarios", "eventos", "eventos_clave"],
+        sum_cols=["sesiones", "usuarios", "eventos", "eventos_clave"],
         column_config={
             "fuente": "Fuente",
             "campana": "Campaña",
