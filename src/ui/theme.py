@@ -26,6 +26,11 @@ CSS = f"""
     .badge-ok  {{ background: rgba(22,163,74,.15);  color:{TEMA.verde_ok}; }}
     .badge-warn{{ background: rgba(217,119,6,.15);  color:{TEMA.ambar_riesgo}; }}
     .badge-off {{ background: rgba(220,38,38,.15);  color:{TEMA.rojo_off}; }}
+    /* Menú lateral: renombrar la página principal "app" -> "Resumen Total" (negrita) */
+    [data-testid="stSidebarNav"] span[label="app"] div[data-testid="stMarkdownContainer"] {{ font-size: 0; }}
+    [data-testid="stSidebarNav"] span[label="app"] div[data-testid="stMarkdownContainer"]::after {{
+        content: "Resumen Total"; font-size: 0.875rem; font-weight: 800; white-space: nowrap;
+    }}
 </style>
 """
 
