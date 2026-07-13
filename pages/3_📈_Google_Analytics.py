@@ -89,3 +89,45 @@ st.caption(
     "Solo tráfico de las 5 landings de programa en `cloud.info-uvic.cat`. "
     "Los leads/conversiones se miden en HubSpot (página *Leads*)."
 )
+
+st.divider()
+
+# --- Tráfico por fuente / medio --------------------------------------------- #
+st.subheader("Detalle por fuente / medio")
+fm = datos.ga4_fuente
+if fm.empty:
+    st.info("Sin datos de fuente/medio.")
+else:
+    st.dataframe(
+        fm[["fuente", "medio", "sesiones", "usuarios", "eventos", "eventos_clave"]],
+        width='stretch', hide_index=True,
+        column_config={
+            "fuente": "Fuente", "medio": "Medio",
+            "sesiones": st.column_config.NumberColumn("Sesiones", format="%d"),
+            "usuarios": st.column_config.NumberColumn("Usuarios", format="%d"),
+            "eventos": st.column_config.NumberColumn("Eventos", format="%d"),
+            "eventos_clave": st.column_config.NumberColumn("Eventos clave", format="%d"),
+        },
+    )
+
+# --- Tráfico por campaña ---------------------------------------------------- #
+st.subheader("Detalle por campaña")
+cg = datos.ga4_campana
+if cg.empty:
+    st.info("Sin datos de campaña.")
+else:
+    st.dataframe(
+        cg[["campana", "sesiones", "usuarios", "eventos", "eventos_clave"]],
+        width='stretch', hide_index=True,
+        column_config={
+            "campana": "Campaña",
+            "sesiones": st.column_config.NumberColumn("Sesiones", format="%d"),
+            "usuarios": st.column_config.NumberColumn("Usuarios", format="%d"),
+            "eventos": st.column_config.NumberColumn("Eventos", format="%d"),
+            "eventos_clave": st.column_config.NumberColumn("Eventos clave", format="%d"),
+        },
+    )
+st.caption(
+    "**Eventos** = total de interacciones registradas. **Eventos clave** = los marcados "
+    "como conversión en GA4. Ambas tablas están filtradas a las 5 landings WeRise."
+)

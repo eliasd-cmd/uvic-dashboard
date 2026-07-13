@@ -111,6 +111,35 @@ def ga4_diario(dias: int = 30) -> pd.DataFrame:
     return pd.DataFrame(filas)
 
 
+def ga4_por_fuente(dias: int = 30) -> pd.DataFrame:
+    """Tráfico de ejemplo por fuente/medio de las 5 landings."""
+    r = _rng("ga4-fuente")
+    fuentes = [("meta", "ads"), ("google", "cpc"), ("fb", "ads"), ("ig", "ads"),
+               ("(direct)", "(none)"), ("google", "organic")]
+    filas = []
+    for f, m in fuentes:
+        ses = int(r.uniform(20, 400))
+        filas.append(dict(fuente=f, medio=m, sesiones=ses,
+                          usuarios=int(ses * r.uniform(0.8, 0.98)),
+                          eventos=int(ses * r.uniform(3, 4)),
+                          eventos_clave=int(ses * r.uniform(0.02, 0.05))))
+    return pd.DataFrame(filas).sort_values("sesiones", ascending=False)
+
+
+def ga4_por_campana(dias: int = 30) -> pd.DataFrame:
+    """Tráfico de ejemplo por campaña de las 5 landings."""
+    r = _rng("ga4-campana")
+    filas = []
+    for p in PROGRAMAS:
+        for camp in (p.campana_meta, p.campana_google):
+            ses = int(r.uniform(20, 250))
+            filas.append(dict(campana=camp, sesiones=ses,
+                              usuarios=int(ses * r.uniform(0.8, 0.98)),
+                              eventos=int(ses * r.uniform(3, 4)),
+                              eventos_clave=int(ses * r.uniform(0.0, 0.05))))
+    return pd.DataFrame(filas).sort_values("sesiones", ascending=False)
+
+
 # --------------------------------------------------------------------------- #
 # HubSpot — leads (contactos) con atribución a campaña
 # --------------------------------------------------------------------------- #

@@ -50,46 +50,39 @@ def obtener(dias: int = 30) -> ResultadoConector:
     return ResultadoConector(sample_data.ga4_diario(dias), "sample", "Datos de ejemplo")
 
 
-def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
+def _cliente(creds: dict):
+    """Devuelve (client, property_id, FiltroLandings) reutilizable."""
     from google.analytics.data_v1beta import BetaAnalyticsDataClient  # type: ignore
     from google.analytics.data_v1beta.types import (  # type: ignore
-        DateRange,
-        Dimension,
-        Filter,
-        FilterExpression,
-        Metric,
-        RunReportRequest,
+        Filter, FilterExpression,
     )
     from google.oauth2 import service_account  # type: ignore
 
     if creds.get("service_account_file"):
         credentials = service_account.Credentials.from_service_account_file(
-            creds["service_account_file"]
-        )
+            creds["service_account_file"])
     else:
         credentials = service_account.Credentials.from_service_account_info(
-            dict(creds["service_account"])
-        )
+            dict(creds["service_account"]))
     client = BetaAnalyticsDataClient(credentials=credentials)
     property_id = creds.get("property_id", config.GA4_PROPERTY_ID)
+    filtro = FilterExpression(filter=Filter(
+        field_name="landingPage",
+        in_list_filter=Filter.InListFilter(values=config.LANDINGS)))
+    return client, property_id, filtro
 
-    # Solo el tráfico de las 5 landings de los programas WeRise.
-    filtro = FilterExpression(
-        filter=Filter(
-            field_name="landingPage",
-            in_list_filter=Filter.InListFilter(values=config.LANDINGS),
-        )
+
+def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
+    from google.analytics.data_v1beta.types import (  # type: ignore
+        DateRange, Dimension, Metric, RunReportRequest,
     )
+    client, property_id, filtro = _cliente(creds)
     request = RunReportRequest(
         property=property_id,
         dimensions=[Dimension(name="date"), Dimension(name="landingPage")],
-        metrics=[
-            Metric(name="sessions"),
-            Metric(name="totalUsers"),
-            Metric(name="screenPageViews"),
-            Metric(name="bounceRate"),
-            Metric(name="averageSessionDuration"),
-        ],
+        metrics=[Metric(name=m) for m in
+                 ("sessions", "totalUsers", "screenPageViews", "bounceRate",
+                  "averageSessionDuration")],
         date_ranges=[DateRange(start_date=f"{dias}daysAgo", end_date="today")],
         dimension_filter=filtro,
     )
@@ -110,3 +103,72 @@ def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
             duracion_media=round(float(m[4].value or 0), 0),
         ))
     return pd.DataFrame(filas)
+
+
+# --------------------------------------------------------------------------- #
+# Agrupaciones extra de las 5 landings: por fuente/medio y por campaña.
+# Incluyen eventos (eventCount) y eventos clave (keyEvents).
+# --------------------------------------------------------------------------- #
+_MET_EXTRA = ["sessions", "totalUsers", "eventCount", "keyEvents"]
+
+
+def _report_agrupado(creds: dict, dias: int, dims: list[tuple[str, str]]) -> pd.DataFrame:
+    """Ejecuta un informe agrupado por `dims` [(ga4_name, col_salida), ...],
+    filtrado a las 5 landings, con sesiones/usuarios/eventos/eventos_clave."""
+    from google.analytics.data_v1beta.types import (  # type: ignore
+        DateRange, Dimension, Metric, RunReportRequest,
+    )
+    client, property_id, filtro = _cliente(creds)
+    request = RunReportRequest(
+        property=property_id,
+        dimensions=[Dimension(name=g) for g, _ in dims],
+        metrics=[Metric(name=m) for m in _MET_EXTRA],
+        date_ranges=[DateRange(start_date=f"{dias}daysAgo", end_date="today")],
+        dimension_filter=filtro,
+    )
+    resp = client.run_report(request)
+    filas = []
+    for row in resp.rows:
+        fila = {col: row.dimension_values[i].value for i, (_, col) in enumerate(dims)}
+        m = row.metric_values
+        fila.update(
+            sesiones=int(m[0].value or 0),
+            usuarios=int(m[1].value or 0),
+            eventos=int(float(m[2].value or 0)),
+            eventos_clave=int(float(m[3].value or 0)),
+        )
+        filas.append(fila)
+    df = pd.DataFrame(filas)
+    if not df.empty:
+        df = df.sort_values("sesiones", ascending=False)
+    return df
+
+
+def _obtener_agrupado(dias, dims, nombre_cache, fn_sample):
+    creds = _leer_secreto("ga4")
+    if creds and (creds.get("service_account") or creds.get("service_account_file")):
+        try:
+            df = _report_agrupado(creds, dias, dims)
+            if df is not None and not df.empty:
+                guardar_cache(df, nombre_cache)
+                return ResultadoConector(df, "api", "GA4 Data API")
+        except Exception as e:  # noqa: BLE001
+            cache = leer_cache(nombre_cache)
+            if cache is not None:
+                return ResultadoConector(cache, "cache", f"API falló ({e}); caché")
+    cache = leer_cache(nombre_cache)
+    if cache is not None and not cache.empty:
+        return ResultadoConector(cache, "cache", "Caché local")
+    return ResultadoConector(fn_sample(dias), "sample", "Datos de ejemplo")
+
+
+def obtener_fuente(dias: int = 30) -> ResultadoConector:
+    return _obtener_agrupado(
+        dias, [("sessionSource", "fuente"), ("sessionMedium", "medio")],
+        "ga4_fuente", sample_data.ga4_por_fuente)
+
+
+def obtener_campana(dias: int = 30) -> ResultadoConector:
+    return _obtener_agrupado(
+        dias, [("sessionCampaignName", "campana")],
+        "ga4_campana", sample_data.ga4_por_campana)
