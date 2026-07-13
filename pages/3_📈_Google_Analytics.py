@@ -98,8 +98,10 @@ fm = datos.ga4_fuente
 if fm.empty:
     st.info("Sin datos de fuente/medio.")
 else:
+    _cols_fm = [c for c in ["fuente", "medio", "sesiones", "usuarios", "eventos", "eventos_clave"]
+                if c in fm.columns]
     st.dataframe(
-        fm[["fuente", "medio", "sesiones", "usuarios", "eventos", "eventos_clave"]],
+        fm[_cols_fm],
         width='stretch', hide_index=True,
         column_config={
             "fuente": "Fuente", "medio": "Medio",
@@ -116,8 +118,10 @@ cg = datos.ga4_campana
 if cg.empty:
     st.info("Sin datos de campaña.")
 else:
+    _cols_cg = [c for c in ["fuente", "campana", "sesiones", "usuarios", "eventos", "eventos_clave"]
+                if c in cg.columns]
     st.dataframe(
-        cg[["fuente", "campana", "sesiones", "usuarios", "eventos", "eventos_clave"]],
+        cg[_cols_cg],
         width='stretch', hide_index=True,
         column_config={
             "fuente": "Fuente",
