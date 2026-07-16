@@ -71,6 +71,38 @@ else:
         f"HubSpot tiene **{num(n_leads_g)}** leads con UTM de Google de {num(len(datos.leads))} totales."
     )
 
+# --- Comparativa de medición por campaña ------------------------------------- #
+st.subheader("Comparativa de medición por campaña")
+st.caption("Resultados según cada fuente: Google (plataforma) · HubSpot (leads con `uvic_utm_campaign`) · GA4 (eventos clave de google/cpc).")
+_gg = df.groupby("campana")["conversiones"].sum().astype(int)
+_lh = (leads_g_hs.groupby("campana").size() if n_leads_g else None)
+_gc = datos.ga4_campana
+_gv = None
+if not _gc.empty and {"fuente", "campana", "eventos_clave"}.issubset(_gc.columns):
+    _g = _gc[_gc["fuente"].str.lower() == "google"].copy()
+    _g["campana"] = _g["campana"].str.replace("+", " ", regex=False)
+    _gv = _g.groupby("campana")["eventos_clave"].sum()
+_comp = []
+for _camp in _gg.index:
+    _comp.append(dict(
+        campana=_camp,
+        resultados_google=int(_gg.get(_camp, 0)),
+        leads_hubspot=int(_lh.get(_camp, 0)) if _lh is not None else 0,
+        eventos_ga4=int(_gv.get(_camp, 0)) if _gv is not None else 0,
+    ))
+import pandas as _pd
+ui.tabla_totales(
+    _pd.DataFrame(_comp),
+    columnas=["campana", "resultados_google", "leads_hubspot", "eventos_ga4"],
+    sum_cols=["resultados_google", "leads_hubspot", "eventos_ga4"],
+    column_config={
+        "campana": "Campaña",
+        "resultados_google": st.column_config.NumberColumn("Resultados Google", format="%d"),
+        "leads_hubspot": st.column_config.NumberColumn("Leads HubSpot (UTM)", format="%d"),
+        "eventos_ga4": st.column_config.NumberColumn("Eventos clave GA4", format="%d"),
+    },
+)
+
 # --- Observaciones automáticas ---------------------------------------------- #
 camp = metrics.resumen_campana(df)
 wins, concerns = [], []
@@ -98,6 +130,10 @@ ui.barras(camp.head(10), x="coste", y="campana", color="programa",
           titulo="Inversión por campaña", orientacion="h")
 tab = camp[["campana", "programa", "impresiones", "clics", "ctr", "cpc", "coste", "conversiones"]].copy()
 tab["ctr"] = (tab["ctr"] * 100).round(2)  # ratio -> %
+tab["cpl_google"] = tab.apply(
+    lambda r: r["coste"] / r["conversiones"] if r["conversiones"] else 0, axis=1)
+_map_lh = leads_g_hs.groupby("campana").size().to_dict() if n_leads_g else {}
+tab["leads_hubspot"] = tab["campana"].map(_map_lh).fillna(0).astype(int)
 st.dataframe(
     tab, width='stretch', hide_index=True,
     column_config={
@@ -107,8 +143,14 @@ st.dataframe(
         "ctr": st.column_config.NumberColumn("CTR", format="%.2f%%"),
         "cpc": st.column_config.NumberColumn("CPC", format="%.2f €"),
         "coste": st.column_config.NumberColumn("Inversión", format="%.0f €"),
-        "conversiones": st.column_config.NumberColumn("Conv.", format="%d"),
+        "conversiones": st.column_config.NumberColumn("Resultados Google", format="%d"),
+        "cpl_google": st.column_config.NumberColumn("CPL Google", format="%.2f €"),
+        "leads_hubspot": st.column_config.NumberColumn("Leads HubSpot", format="%d"),
     },
+)
+st.caption(
+    "**Resultados Google** = conversiones atribuidas por la plataforma · **CPL Google** = inversión / "
+    "resultados Google · **Leads HubSpot** = leads reales con `uvic_utm_campaign` de esa campaña."
 )
 st.caption(
     "Las 5 campañas `WeRise_Search_NAC_` traen el grueso de leads cualificados. "
