@@ -24,18 +24,47 @@ if df.empty:
 
 r = metrics.resumen_plataforma(df).iloc[0]
 t_inv = metrics.tendencia(df, "coste", "fecha")
-cpa = r["coste"] / r["conversiones"] if r["conversiones"] else 0
+resultados = int(r["conversiones"])
+tasa_resultados = resultados / r["clics"] if r["clics"] else 0
+coste_resultado = r["coste"] / resultados if resultados else 0
 
-c1, c2, c3, c4, c5 = st.columns(5)
+# CPL real: eventos clave de GA4 llegados desde Google de pago (google / cpc).
+ev_google = 0
+gf = datos.ga4_fuente
+if not gf.empty and {"fuente", "medio", "eventos_clave"}.issubset(gf.columns):
+    mask = (gf["fuente"].str.lower() == "google") & (gf["medio"].astype(str).str.lower() == "cpc")
+    ev_google = int(gf[mask]["eventos_clave"].sum())
+cpl_real = r["coste"] / ev_google if ev_google else 0
+
+st.subheader("Volumen y coste")
+c1, c2, c3, c4 = st.columns(4)
 ui.kpi(c1, "Inversión", eur(r["coste"]), delta=t_inv["delta"], delta_bueno=True)
 ui.kpi(c2, "Impresiones", num(r["impresiones"]), "Alcance de búsqueda")
-ui.kpi(c3, "CTR", pct(r["ctr"], 2), f"Benchmark ≥ {pct(config.BENCH['ctr_search']['ok'],0)}",
+ui.kpi(c3, "Clics", num(r["clics"]), f"CTR {pct(r['ctr'],2)}",
        estado=config.estado_bench("ctr_search", r["ctr"]))
-ui.kpi(c4, "CPC medio", eur(r["cpc"], 2), f"Benchmark ≤ {eur(config.BENCH['cpc_search']['ok'],1)}",
+ui.kpi(c4, "CPM", eur(r["cpm"], 2), "Coste por mil impresiones")
+
+st.subheader("Eficiencia y resultado")
+c5, c6, c7, c8 = st.columns(4)
+ui.kpi(c5, "CPC medio", eur(r["cpc"], 2), f"Benchmark ≤ {eur(config.BENCH['cpc_search']['ok'],1)}",
        estado=config.estado_bench("cpc_search", r["cpc"]))
-ui.kpi(c5, "Conversiones", num(r["conversiones"]),
-       "Tracking roto" if r["conversiones"] == 0 else f"CPA {eur(cpa)}",
-       estado="off" if r["conversiones"] == 0 else "ok")
+ui.kpi(c6, "Resultados (conversiones)", num(resultados),
+       f"Tasa {pct(tasa_resultados,2)} sobre clics",
+       estado="ok" if resultados > 0 else "off")
+ui.kpi(c7, "Coste/resultado", eur(coste_resultado, 2) if resultados else "—",
+       "Inversión / conversiones Google",
+       estado=config.estado_bench("cpl", coste_resultado) if resultados else "off")
+ui.kpi(c8, "CPL real (GA4)", eur(cpl_real, 2) if ev_google else "—",
+       f"{num(ev_google)} eventos clave · google/cpc",
+       estado=config.estado_bench("cpl", cpl_real) if ev_google else None)
+
+if resultados == 0:
+    st.warning("Google no está atribuyendo conversiones pese al gasto. Revisa *Tracking & Atribución*.")
+else:
+    st.caption(
+        f"Google atribuye **{num(resultados)}** conversiones · GA4 registra **{num(ev_google)}** eventos "
+        f"clave de google/cpc · HubSpot tiene **{num(len(datos.leads))}** leads UVic (todas las fuentes)."
+    )
 
 # --- Observaciones automáticas ---------------------------------------------- #
 camp = metrics.resumen_campana(df)
