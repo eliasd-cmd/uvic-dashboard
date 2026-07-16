@@ -90,16 +90,21 @@ _LBL_TOTAL = {
     "rebote": "Rebote", "duracion_media": "Dur. media",
     "resultados_meta": "Meta", "resultados_google": "Google",
     "leads_hubspot": "HubSpot", "eventos_ga4": "GA4",
-    "leads": "Leads",
+    "leads": "Leads", "impresiones": "Impr.", "clics": "Clics",
+    "coste": "Inversión", "conversiones": "Resultados",
+    "ctr": "CTR", "cpc": "CPC", "cpl_meta": "CPL", "cpl_google": "CPL",
 }
+_SUF_TOTAL = {"coste": " €"}
 
 
 def tabla_totales(df: pd.DataFrame, columnas: list[str], sum_cols: list[str],
                   column_config: dict, weighted: list[str] | None = None,
-                  weight_col: str = "sesiones") -> None:
+                  weight_col: str = "sesiones",
+                  ratios: dict | None = None) -> None:
     """Muestra la tabla y, debajo, un **pie de TOTAL fijo** (siempre visible,
     fuera del scroll interno del grid). `sum_cols` se suman; `weighted` se
-    promedian ponderando por `weight_col`."""
+    promedian ponderando por `weight_col`; `ratios` = {col: (num, den, mult,
+    sufijo)} se recalculan como sum(num)/sum(den)*mult (CTR/CPC/CPL exactos)."""
     if df is None or df.empty:
         st.info("Sin datos.")
         return
@@ -109,7 +114,14 @@ def tabla_totales(df: pd.DataFrame, columnas: list[str], sum_cols: list[str],
     partes = []
     for c in sum_cols:
         if c in df.columns:
-            partes.append(f"{_LBL_TOTAL.get(c, c)} <strong>{num(int(df[c].sum()))}</strong>")
+            partes.append(f"{_LBL_TOTAL.get(c, c)} <strong>{num(int(df[c].sum()))}"
+                          f"{_SUF_TOTAL.get(c, '')}</strong>")
+    for c, (nc, dc, mult, suf) in (ratios or {}).items():
+        if nc in df.columns and dc in df.columns:
+            den = df[dc].sum()
+            v = df[nc].sum() / den * mult if den else 0
+            v_str = f"{v:,.2f}".replace(",", "·").replace(".", ",").replace("·", ".")
+            partes.append(f"{_LBL_TOTAL.get(c, c)} <strong>{v_str}{suf}</strong>")
     if weighted and weight_col in df.columns:
         w = df[weight_col].sum()
         for c in weighted:

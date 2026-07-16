@@ -134,8 +134,16 @@ tab["cpl_google"] = tab.apply(
     lambda r: r["coste"] / r["conversiones"] if r["conversiones"] else 0, axis=1)
 _map_lh = leads_g_hs.groupby("campana").size().to_dict() if n_leads_g else {}
 tab["leads_hubspot"] = tab["campana"].map(_map_lh).fillna(0).astype(int)
-st.dataframe(
-    tab, width='stretch', hide_index=True,
+ui.tabla_totales(
+    tab,
+    columnas=["campana", "programa", "impresiones", "clics", "ctr", "cpc", "coste",
+              "conversiones", "cpl_google", "leads_hubspot"],
+    sum_cols=["impresiones", "clics", "coste", "conversiones", "leads_hubspot"],
+    ratios={
+        "ctr": ("clics", "impresiones", 100, "%"),
+        "cpc": ("coste", "clics", 1, " €"),
+        "cpl_google": ("coste", "conversiones", 1, " €"),
+    },
     column_config={
         "campana": "Campaña", "programa": "Programa",
         "impresiones": st.column_config.NumberColumn("Impr.", format="%d"),
