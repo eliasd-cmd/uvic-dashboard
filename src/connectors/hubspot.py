@@ -8,8 +8,8 @@ Modelo UVic (verificado):
 - **Matrícula** = Deal en etapa "Cierre ganado" del Pipeline UVIC (3920516288).
 
 Expone:
-- obtener(dias)        -> ResultadoConector con el DataFrame de leads (contactos).
-- obtener_deals(dias)  -> ResultadoConector con el DataFrame de deals (Pipeline UVIC).
+- obtener(desde, hasta)       -> ResultadoConector con el DataFrame de leads (contactos).
+- obtener_deals(desde, hasta) -> ResultadoConector con el DataFrame de deals (Pipeline UVIC).
 
 Orden de resolución en ambos: API real -> caché -> datos de ejemplo.
 
@@ -20,7 +20,6 @@ Credenciales en .streamlit/secrets.toml:
 """
 from __future__ import annotations
 
-import time
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -47,13 +46,14 @@ MAPA_LIFECYCLE = {
 # --------------------------------------------------------------------------- #
 # Leads (contactos con uvic_curso)
 # --------------------------------------------------------------------------- #
-def obtener(dias: int = 30) -> ResultadoConector:
+def obtener(desde, hasta) -> ResultadoConector:
     creds = _leer_secreto("hubspot")
     if creds and creds.get("access_token"):
         try:
-            df = _fetch_leads(creds, dias)
+            df = _fetch_leads(creds, desde, hasta)
             if df is not None:
-                guardar_cache(df, "hubspot_leads")
+                if not df.empty:
+                    guardar_cache(df, "hubspot_leads")
                 return ResultadoConector(df, "api", "HubSpot (uvic_curso)")
         except Exception as e:  # noqa: BLE001
             cache = leer_cache("hubspot_leads")
@@ -63,16 +63,18 @@ def obtener(dias: int = 30) -> ResultadoConector:
     cache = leer_cache("hubspot_leads")
     if cache is not None and not cache.empty:
         return ResultadoConector(cache, "cache", "Caché local")
-    return ResultadoConector(sample_data.hubspot_leads(dias), "sample", "Datos de ejemplo")
+    return ResultadoConector(sample_data.hubspot_leads((hasta - desde).days + 1),
+                             "sample", "Datos de ejemplo")
 
 
-def obtener_deals(dias: int = 30) -> ResultadoConector:
+def obtener_deals(desde, hasta) -> ResultadoConector:
     creds = _leer_secreto("hubspot")
     if creds and creds.get("access_token"):
         try:
-            df = _fetch_deals(creds, dias)
+            df = _fetch_deals(creds)
             if df is not None:
-                guardar_cache(df, "hubspot_deals")
+                if not df.empty:
+                    guardar_cache(df, "hubspot_deals")
                 return ResultadoConector(df, "api", "HubSpot Pipeline UVIC")
         except Exception as e:  # noqa: BLE001
             cache = leer_cache("hubspot_deals")
@@ -82,7 +84,8 @@ def obtener_deals(dias: int = 30) -> ResultadoConector:
     cache = leer_cache("hubspot_deals")
     if cache is not None and not cache.empty:
         return ResultadoConector(cache, "cache", "Caché local")
-    return ResultadoConector(sample_data.hubspot_deals(dias), "sample", "Datos de ejemplo")
+    return ResultadoConector(sample_data.hubspot_deals((hasta - desde).days + 1),
+                             "sample", "Datos de ejemplo")
 
 
 # --------------------------------------------------------------------------- #
@@ -92,8 +95,12 @@ def _headers(token: str) -> dict:
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 
-def _desde_ms(dias: int) -> int:
-    return int((time.time() - dias * 86400) * 1000)
+def _rango_ms(desde, hasta) -> tuple[int, int]:
+    """(inicio, fin) del rango en milisegundos epoch: desde 00:00 hasta 23:59:59."""
+    from datetime import datetime as _dt, time as _time
+    ini = int(_dt.combine(desde, _time.min).timestamp() * 1000)
+    fin = int(_dt.combine(hasta, _time.max).timestamp() * 1000)
+    return ini, fin
 
 
 def _a_fecha(iso: str):
@@ -102,15 +109,17 @@ def _a_fecha(iso: str):
     return datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(timezone.utc).date()
 
 
-def _fetch_leads(creds: dict, dias: int) -> pd.DataFrame:
+def _fetch_leads(creds: dict, desde, hasta) -> pd.DataFrame:
     import requests
 
     token = creds["access_token"]
+    ini_ms, fin_ms = _rango_ms(desde, hasta)
     payload = {
         "filterGroups": [{
             "filters": [
                 {"propertyName": "uvic_curso", "operator": "HAS_PROPERTY"},
-                {"propertyName": "createdate", "operator": "GTE", "value": str(_desde_ms(dias))},
+                {"propertyName": "createdate", "operator": "GTE", "value": str(ini_ms)},
+                {"propertyName": "createdate", "operator": "LTE", "value": str(fin_ms)},
                 # Excluir leads antiguos importados (no son de las campañas actuales).
                 {"propertyName": "hs_object_source", "operator": "NEQ", "value": "IMPORT"},
             ]
@@ -162,8 +171,9 @@ def _fetch_leads(creds: dict, dias: int) -> pd.DataFrame:
     return pd.DataFrame(filas)
 
 
-def _fetch_deals(creds: dict, dias: int) -> pd.DataFrame:
-    """Deals del Pipeline UVIC + programa (vía contacto asociado y su uvic_curso)."""
+def _fetch_deals(creds: dict) -> pd.DataFrame:
+    """Deals del Pipeline UVIC + programa (vía contacto asociado y su uvic_curso).
+    Sin filtro de fecha: el pipeline completo es el estado vivo del embudo."""
     import requests
 
     token = creds["access_token"]

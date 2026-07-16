@@ -11,11 +11,11 @@ from src.ui.theme import aplicar_tema, eur, num, pct
 st.set_page_config(page_title="Leads · HubSpot", page_icon="🎯", layout="wide")
 aplicar_tema()
 
-dias = ui.selector_periodo(30)
-datos = loader.cargar_todo(dias)
+desde, hasta, etiqueta = ui.selector_periodo()
+datos = loader.cargar_todo(desde, hasta)
 ui.aviso_origenes(datos.origenes, datos.detalles)
 
-ui.cabecera("Leads · HubSpot", f"Rise Education · leads UVic por programa · últimos {dias} días")
+ui.cabecera("Leads · HubSpot", f"Rise Education · leads UVic por programa · {etiqueta}")
 
 leads = datos.leads
 deals = datos.deals

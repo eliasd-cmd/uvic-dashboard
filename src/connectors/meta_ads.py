@@ -23,13 +23,14 @@ from src.connectors.base import (
 from src.data import sample_data
 
 
-def obtener(dias: int = 30) -> ResultadoConector:
+def obtener(desde, hasta) -> ResultadoConector:
     creds = _leer_secreto("meta_ads")
     if creds:
         try:
-            df = _consultar_api(creds, dias)
-            if df is not None and not df.empty:
-                guardar_cache(df, "meta_ads")
+            df = _consultar_api(creds, desde, hasta)
+            if df is not None:
+                if not df.empty:
+                    guardar_cache(df, "meta_ads")
                 return ResultadoConector(df, "api", "Meta Marketing API")
         except Exception as e:  # noqa: BLE001
             cache = leer_cache("meta_ads")
@@ -40,13 +41,16 @@ def obtener(dias: int = 30) -> ResultadoConector:
     if cache is not None and not cache.empty:
         return ResultadoConector(cache, "cache", "Caché local")
 
+    dias = (hasta - desde).days + 1
     return ResultadoConector(
         sample_data.meta_ads_diario(dias), "sample", "Datos de ejemplo"
     )
 
 
-def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
+def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
     """Insights diarios por campaña vía Graph API (con requests, sin SDK)."""
+    import json
+
     import requests
 
     version = creds.get("api_version", "v21.0")
@@ -58,7 +62,7 @@ def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
         "level": "campaign",
         "fields": "campaign_name,impressions,clicks,spend,actions",
         "time_increment": 1,
-        "date_preset": _date_preset(dias),
+        "time_range": json.dumps({"since": str(desde), "until": str(hasta)}),
         "access_token": token,
         "limit": 500,
     }
@@ -93,11 +97,3 @@ def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
     return pd.DataFrame(filas)
 
 
-def _date_preset(dias: int) -> str:
-    if dias <= 7:
-        return "last_7d"
-    if dias <= 14:
-        return "last_14d"
-    if dias <= 30:
-        return "last_30d"
-    return "last_90d"

@@ -42,31 +42,31 @@ class DatosDashboard:
 
 # Caché por fuente con TTL distinto: HubSpot corto (cambia a diario), ads/GA4 largo.
 @st.cache_data(ttl=config.CACHE_TTL_ADS, show_spinner="Cargando Google Ads…")
-def _cargar_google(dias: int):
-    r = google_ads.obtener(dias)
+def _cargar_google(desde, hasta):
+    r = google_ads.obtener(desde, hasta)
     return r.df, r.origen, r.detalle
 
 
 @st.cache_data(ttl=config.CACHE_TTL_ADS, show_spinner="Cargando Meta Ads…")
-def _cargar_meta(dias: int):
-    r = meta_ads.obtener(dias)
+def _cargar_meta(desde, hasta):
+    r = meta_ads.obtener(desde, hasta)
     return r.df, r.origen, r.detalle
 
 
 @st.cache_data(ttl=config.CACHE_TTL_GA4, show_spinner="Cargando GA4…")
-def _cargar_ga4(dias: int):
-    r = ga4.obtener(dias)
-    rf = ga4.obtener_fuente(dias)
-    rc = ga4.obtener_campana(dias)
-    rr = ga4.obtener_resumen(dias)
-    re = ga4.obtener_eventos_campana(dias)
+def _cargar_ga4(desde, hasta):
+    r = ga4.obtener(desde, hasta)
+    rf = ga4.obtener_fuente(desde, hasta)
+    rc = ga4.obtener_campana(desde, hasta)
+    rr = ga4.obtener_resumen(desde, hasta)
+    re = ga4.obtener_eventos_campana(desde, hasta)
     return r.df, r.origen, r.detalle, rf.df, rc.df, rr.df, re.df
 
 
 @st.cache_data(ttl=config.CACHE_TTL_HUBSPOT, show_spinner="Cargando HubSpot…")
-def _cargar_hubspot(dias: int):
-    leads = hubspot.obtener(dias)
-    deals = hubspot.obtener_deals(dias)
+def _cargar_hubspot(desde, hasta):
+    leads = hubspot.obtener(desde, hasta)
+    deals = hubspot.obtener_deals(desde, hasta)
     return leads.df, leads.origen, leads.detalle, deals.df
 
 
@@ -76,11 +76,11 @@ def _cargar_importados():
     return leads_i, negocios_i, origen_i
 
 
-def cargar_todo(dias: int = 30) -> DatosDashboard:
-    g_df, g_o, g_d = _cargar_google(dias)
-    m_df, m_o, m_d = _cargar_meta(dias)
-    a_df, a_o, a_d, af_df, ac_df, ar_df, ae_df = _cargar_ga4(dias)
-    l_df, l_o, l_d, d_df = _cargar_hubspot(dias)
+def cargar_todo(desde, hasta) -> DatosDashboard:
+    g_df, g_o, g_d = _cargar_google(desde, hasta)
+    m_df, m_o, m_d = _cargar_meta(desde, hasta)
+    a_df, a_o, a_d, af_df, ac_df, ar_df, ae_df = _cargar_ga4(desde, hasta)
+    l_df, l_o, l_d, d_df = _cargar_hubspot(desde, hasta)
     li_df, ni_df, oi = _cargar_importados()
     return DatosDashboard(
         google=g_df, meta=m_df, ga4=a_df, leads=l_df, deals=d_df,

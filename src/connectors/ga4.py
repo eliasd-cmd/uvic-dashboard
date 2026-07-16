@@ -28,15 +28,16 @@ from src.connectors.base import (
 from src.data import sample_data
 
 
-def obtener(dias: int = 30) -> ResultadoConector:
+def obtener(desde, hasta) -> ResultadoConector:
     creds = _leer_secreto("ga4")
     # Vale con el JSON del service account inline (service_account) o con la
     # ruta a un archivo JSON (service_account_file).
     if creds and (creds.get("service_account") or creds.get("service_account_file")):
         try:
-            df = _consultar_api(creds, dias)
-            if df is not None and not df.empty:
-                guardar_cache(df, "ga4")
+            df = _consultar_api(creds, desde, hasta)
+            if df is not None:
+                if not df.empty:
+                    guardar_cache(df, "ga4")
                 return ResultadoConector(df, "api", "GA4 Data API")
         except Exception as e:  # noqa: BLE001
             cache = leer_cache("ga4")
@@ -47,7 +48,7 @@ def obtener(dias: int = 30) -> ResultadoConector:
     if cache is not None and not cache.empty:
         return ResultadoConector(cache, "cache", "Caché local")
 
-    return ResultadoConector(sample_data.ga4_diario(dias), "sample", "Datos de ejemplo")
+    return ResultadoConector(sample_data.ga4_diario((hasta - desde).days + 1), "sample", "Datos de ejemplo")
 
 
 def _cliente(creds: dict):
@@ -79,7 +80,7 @@ def _cliente(creds: dict):
     return client, property_id, filtro
 
 
-def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
+def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
     from google.analytics.data_v1beta.types import (  # type: ignore
         DateRange, Dimension, Metric, RunReportRequest,
     )
@@ -90,7 +91,7 @@ def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
         metrics=[Metric(name=m) for m in
                  ("sessions", "totalUsers", "screenPageViews", "bounceRate",
                   "averageSessionDuration")],
-        date_ranges=[DateRange(start_date=f"{dias}daysAgo", end_date="today")],
+        date_ranges=[DateRange(start_date=str(desde), end_date=str(hasta))],
         dimension_filter=filtro,
     )
     resp = client.run_report(request)
@@ -122,7 +123,7 @@ def _mets_extra() -> list[str]:
             + [f"keyEvents:{e}" for e in config.GA4_EVENTOS_CLAVE])
 
 
-def _report_agrupado(creds: dict, dias: int, dims: list[tuple[str, str]]) -> pd.DataFrame:
+def _report_agrupado(creds: dict, desde, hasta, dims: list[tuple[str, str]]) -> pd.DataFrame:
     """Ejecuta un informe agrupado por `dims` [(ga4_name, col_salida), ...],
     filtrado a las 5 landings, con sesiones/usuarios/eventos/eventos_clave."""
     from google.analytics.data_v1beta.types import (  # type: ignore
@@ -134,7 +135,7 @@ def _report_agrupado(creds: dict, dias: int, dims: list[tuple[str, str]]) -> pd.
         property=property_id,
         dimensions=[Dimension(name=g) for g, _ in dims],
         metrics=[Metric(name=m) for m in mets],
-        date_ranges=[DateRange(start_date=f"{dias}daysAgo", end_date="today")],
+        date_ranges=[DateRange(start_date=str(desde), end_date=str(hasta))],
         dimension_filter=filtro,
     )
     resp = client.run_report(request)
@@ -156,13 +157,14 @@ def _report_agrupado(creds: dict, dias: int, dims: list[tuple[str, str]]) -> pd.
     return df
 
 
-def _obtener_agrupado(dias, dims, nombre_cache, fn_sample):
+def _obtener_agrupado(desde, hasta, dims, nombre_cache, fn_sample):
     creds = _leer_secreto("ga4")
     if creds and (creds.get("service_account") or creds.get("service_account_file")):
         try:
-            df = _report_agrupado(creds, dias, dims)
-            if df is not None and not df.empty:
-                guardar_cache(df, nombre_cache)
+            df = _report_agrupado(creds, desde, hasta, dims)
+            if df is not None:
+                if not df.empty:
+                    guardar_cache(df, nombre_cache)
                 return ResultadoConector(df, "api", "GA4 Data API")
         except Exception as e:  # noqa: BLE001
             cache = leer_cache(nombre_cache)
@@ -171,18 +173,19 @@ def _obtener_agrupado(dias, dims, nombre_cache, fn_sample):
     cache = leer_cache(nombre_cache)
     if cache is not None and not cache.empty:
         return ResultadoConector(cache, "cache", "Caché local")
-    return ResultadoConector(fn_sample(dias), "sample", "Datos de ejemplo")
+    return ResultadoConector(fn_sample((hasta - desde).days + 1), "sample", "Datos de ejemplo")
 
 
-def obtener_resumen(dias: int = 30) -> ResultadoConector:
+def obtener_resumen(desde, hasta) -> ResultadoConector:
     """Totales exactos del periodo (sin dimensión fecha) para las 5 landings:
     sesiones, usuarios, usuarios_nuevos, vistas, engagement, duración, eventos clave."""
     creds = _leer_secreto("ga4")
     if creds and (creds.get("service_account") or creds.get("service_account_file")):
         try:
-            df = _resumen(creds, dias)
-            if df is not None and not df.empty:
-                guardar_cache(df, "ga4_resumen")
+            df = _resumen(creds, desde, hasta)
+            if df is not None:
+                if not df.empty:
+                    guardar_cache(df, "ga4_resumen")
                 return ResultadoConector(df, "api", "GA4 Data API")
         except Exception as e:  # noqa: BLE001
             cache = leer_cache("ga4_resumen")
@@ -191,10 +194,10 @@ def obtener_resumen(dias: int = 30) -> ResultadoConector:
     cache = leer_cache("ga4_resumen")
     if cache is not None and not cache.empty:
         return ResultadoConector(cache, "cache", "Caché local")
-    return ResultadoConector(sample_data.ga4_resumen(dias), "sample", "Datos de ejemplo")
+    return ResultadoConector(sample_data.ga4_resumen((hasta - desde).days + 1), "sample", "Datos de ejemplo")
 
 
-def _resumen(creds: dict, dias: int) -> pd.DataFrame:
+def _resumen(creds: dict, desde, hasta) -> pd.DataFrame:
     from google.analytics.data_v1beta.types import (  # type: ignore
         DateRange, Metric, RunReportRequest,
     )
@@ -205,7 +208,7 @@ def _resumen(creds: dict, dias: int) -> pd.DataFrame:
     request = RunReportRequest(
         property=property_id,
         metrics=[Metric(name=m) for m in mets],
-        date_ranges=[DateRange(start_date=f"{dias}daysAgo", end_date="today")],
+        date_ranges=[DateRange(start_date=str(desde), end_date=str(hasta))],
         dimension_filter=filtro,
     )
     resp = client.run_report(request)
@@ -224,15 +227,15 @@ def _resumen(creds: dict, dias: int) -> pd.DataFrame:
     )])
 
 
-def obtener_fuente(dias: int = 30) -> ResultadoConector:
+def obtener_fuente(desde, hasta) -> ResultadoConector:
     return _obtener_agrupado(
-        dias, [("sessionSource", "fuente"), ("sessionMedium", "medio")],
+        desde, hasta, [("sessionSource", "fuente"), ("sessionMedium", "medio")],
         "ga4_fuente", sample_data.ga4_por_fuente)
 
 
-def obtener_campana(dias: int = 30) -> ResultadoConector:
+def obtener_campana(desde, hasta) -> ResultadoConector:
     return _obtener_agrupado(
-        dias, [("sessionSource", "fuente"), ("sessionCampaignName", "campana")],
+        desde, hasta, [("sessionSource", "fuente"), ("sessionCampaignName", "campana")],
         "ga4_campana", sample_data.ga4_por_campana)
 
 
@@ -240,13 +243,14 @@ def obtener_campana(dias: int = 30) -> ResultadoConector:
 # Desglose de eventos clave por campaña WeRise: una columna por evento
 # (LEAD, form_submit, ...) para comparar qué dispara cada uno.
 # --------------------------------------------------------------------------- #
-def obtener_eventos_campana(dias: int = 30) -> ResultadoConector:
+def obtener_eventos_campana(desde, hasta) -> ResultadoConector:
     creds = _leer_secreto("ga4")
     if creds and (creds.get("service_account") or creds.get("service_account_file")):
         try:
-            df = _eventos_campana(creds, dias)
-            if df is not None and not df.empty:
-                guardar_cache(df, "ga4_eventos")
+            df = _eventos_campana(creds, desde, hasta)
+            if df is not None:
+                if not df.empty:
+                    guardar_cache(df, "ga4_eventos")
                 return ResultadoConector(df, "api", "GA4 Data API")
         except Exception as e:  # noqa: BLE001
             cache = leer_cache("ga4_eventos")
@@ -260,7 +264,7 @@ def obtener_eventos_campana(dias: int = 30) -> ResultadoConector:
         "sample", "Sin datos de ejemplo")
 
 
-def _eventos_campana(creds: dict, dias: int) -> pd.DataFrame:
+def _eventos_campana(creds: dict, desde, hasta) -> pd.DataFrame:
     from google.analytics.data_v1beta.types import (  # type: ignore
         DateRange, Dimension, Metric, RunReportRequest,
     )
@@ -269,7 +273,7 @@ def _eventos_campana(creds: dict, dias: int) -> pd.DataFrame:
         property=property_id,
         dimensions=[Dimension(name="sessionCampaignName"), Dimension(name="eventName")],
         metrics=[Metric(name="keyEvents")],
-        date_ranges=[DateRange(start_date=f"{dias}daysAgo", end_date="today")],
+        date_ranges=[DateRange(start_date=str(desde), end_date=str(hasta))],
         dimension_filter=filtro,
         limit=500,
     )

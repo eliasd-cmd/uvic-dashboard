@@ -11,12 +11,12 @@ from src.ui.theme import aplicar_tema, num, pct
 st.set_page_config(page_title="Google Analytics · UVic", page_icon="📈", layout="wide")
 aplicar_tema()
 
-dias = ui.selector_periodo(30)
-datos = loader.cargar_todo(dias)
+desde, hasta, etiqueta = ui.selector_periodo()
+datos = loader.cargar_todo(desde, hasta)
 ui.aviso_origenes(datos.origenes, datos.detalles)
 
 ui.cabecera("Google Analytics 4",
-            f"Tráfico de las 5 landings WeRise · últimos {dias} días")
+            f"Tráfico de las 5 landings WeRise · {etiqueta}")
 
 df = datos.ga4
 if df.empty:

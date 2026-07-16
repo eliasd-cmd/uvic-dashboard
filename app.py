@@ -24,8 +24,8 @@ aplicar_tema()
 # --------------------------------------------------------------------------- #
 # Datos
 # --------------------------------------------------------------------------- #
-dias = ui.selector_periodo(30)
-datos = loader.cargar_todo(dias)
+desde, hasta, etiqueta = ui.selector_periodo()
+datos = loader.cargar_todo(desde, hasta)
 ui.aviso_origenes(datos.origenes, datos.detalles)
 
 k = metrics.kpis_globales(datos.ads, datos.leads, datos.deals)
@@ -43,13 +43,13 @@ t_deals = metrics.tendencia(serie_deals, "deals", "fecha") if serie_deals is not
 # --------------------------------------------------------------------------- #
 ui.cabecera(
     "Resumen Global",
-    f"Últimos {dias} días · Objetivo Etapa 1: {config.OBJETIVO_MATRICULAS} matrículas "
+    f"{etiqueta} · Objetivo Etapa 1: {config.OBJETIVO_MATRICULAS} matrículas "
     f"con ~{eur(config.OBJETIVO_INVERSION_MENSUAL)}/mes",
 )
 
 _headline = ins["concerns"][0] if ins["concerns"] else ins["wins"][0]
 st.info(
-    f"**Resumen** · En los últimos {dias} días se han invertido **{eur(k['inversion'])}** en las 5 "
+    f"**Resumen** · En el período **{etiqueta}** se han invertido **{eur(k['inversion'])}** en las 5 "
     f"campañas WeRise, generando **{num(k['leads_total'])} leads UVic** (CPL neto {eur(k['cpl_neto'],2)}). "
     f"Hay **{num(k['deals_totales'])} oportunidades** en el Pipeline UVIC y **{num(k['matriculas'])} "
     f"matrículas**. → {_headline}"

@@ -24,12 +24,45 @@ def cabecera(titulo: str, subtitulo: str = "") -> None:
         st.caption("Dashboard de marketing")
 
 
-def selector_periodo(default: int = 30) -> int:
-    opciones = {"Últimos 7 días": 7, "Últimos 14 días": 14,
-                "Últimos 30 días": 30, "Últimos 90 días": 90}
-    etiqueta = st.sidebar.selectbox("Periodo", list(opciones.keys()),
-                                    index=list(opciones.values()).index(default))
-    return opciones[etiqueta]
+def selector_periodo(default: str = "Este mes"):
+    """Devuelve (desde, hasta, etiqueta).
+
+    Dos modos: **Período predefinido** (Este mes ─ por defecto─, Mes anterior,
+    Hoy, Ayer, Últimos N días) o **Rango personalizado** (desde / hasta)."""
+    from datetime import date, timedelta
+
+    hoy = date.today()
+    modo = st.sidebar.radio("Modo de fecha",
+                            ["Período predefinido", "Rango personalizado"])
+
+    if modo == "Rango personalizado":
+        desde = st.sidebar.date_input("Desde", value=hoy - timedelta(days=7),
+                                      max_value=hoy, format="DD/MM/YYYY")
+        hasta = st.sidebar.date_input("Hasta", value=hoy, min_value=desde,
+                                      max_value=hoy, format="DD/MM/YYYY")
+        if hasta < desde:
+            desde, hasta = hasta, desde
+        return desde, hasta, f"{desde.strftime('%d/%m/%Y')} – {hasta.strftime('%d/%m/%Y')}"
+
+    # --- Período predefinido ---
+    primero_mes = hoy.replace(day=1)
+    fin_mes_anterior = primero_mes - timedelta(days=1)
+    inicio_mes_anterior = fin_mes_anterior.replace(day=1)
+    presets = {
+        "Este mes": (primero_mes, hoy),
+        "Mes anterior": (inicio_mes_anterior, fin_mes_anterior),
+        "Hoy": (hoy, hoy),
+        "Ayer": (hoy - timedelta(days=1), hoy - timedelta(days=1)),
+        "Últimos 7 días": (hoy - timedelta(days=6), hoy),
+        "Últimos 14 días": (hoy - timedelta(days=13), hoy),
+        "Últimos 30 días": (hoy - timedelta(days=29), hoy),
+        "Últimos 90 días": (hoy - timedelta(days=89), hoy),
+    }
+    nombres = list(presets.keys())
+    sel = st.sidebar.selectbox("Período", nombres,
+                               index=nombres.index(default) if default in nombres else 0)
+    desde, hasta = presets[sel]
+    return desde, hasta, sel
 
 
 def aviso_origenes(origenes: dict, detalles: dict | None = None) -> None:

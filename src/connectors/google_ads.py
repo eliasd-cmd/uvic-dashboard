@@ -29,13 +29,14 @@ from src.connectors.base import (
 from src.data import sample_data
 
 
-def obtener(dias: int = 30) -> ResultadoConector:
+def obtener(desde, hasta) -> ResultadoConector:
     creds = _leer_secreto("google_ads")
     if creds:
         try:
-            df = _consultar_api(creds, dias)
-            if df is not None and not df.empty:
-                guardar_cache(df, "google_ads")
+            df = _consultar_api(creds, desde, hasta)
+            if df is not None:
+                if not df.empty:
+                    guardar_cache(df, "google_ads")
                 return ResultadoConector(df, "api", "Google Ads API")
         except Exception as e:  # noqa: BLE001
             # Caemos a caché/sample pero informamos del error.
@@ -47,12 +48,13 @@ def obtener(dias: int = 30) -> ResultadoConector:
     if cache is not None and not cache.empty:
         return ResultadoConector(cache, "cache", "Caché local")
 
+    dias = (hasta - desde).days + 1
     return ResultadoConector(
         sample_data.google_ads_diario(dias), "sample", "Datos de ejemplo"
     )
 
 
-def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
+def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
     """Consulta real vía google-ads SDK. Se importa dentro de la función para
     no exigir la dependencia si el usuario aún no usa la API."""
     from google.ads.googleads.client import GoogleAdsClient  # type: ignore
@@ -77,7 +79,7 @@ def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
             metrics.cost_micros,
             metrics.conversions
         FROM campaign
-        WHERE segments.date DURING LAST_{dias}_DAYS
+        WHERE segments.date BETWEEN '{desde}' AND '{hasta}'
     """
     filas = []
     for batch in ga_service.search_stream(customer_id=customer_id, query=query):

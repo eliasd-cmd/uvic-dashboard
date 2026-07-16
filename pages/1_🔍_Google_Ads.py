@@ -11,11 +11,11 @@ from src.ui.theme import aplicar_tema, eur, num, pct
 st.set_page_config(page_title="Google Ads · UVic", page_icon="🔍", layout="wide")
 aplicar_tema()
 
-dias = ui.selector_periodo(30)
-datos = loader.cargar_todo(dias)
+desde, hasta, etiqueta = ui.selector_periodo()
+datos = loader.cargar_todo(desde, hasta)
 ui.aviso_origenes(datos.origenes, datos.detalles)
 
-ui.cabecera("Google Ads", f"Cuenta {config.GOOGLE_ADS_CUSTOMER_ID} · búsqueda WeRise · últimos {dias} días")
+ui.cabecera("Google Ads", f"Cuenta {config.GOOGLE_ADS_CUSTOMER_ID} · búsqueda WeRise · {etiqueta}")
 
 df = datos.google
 if df.empty:
