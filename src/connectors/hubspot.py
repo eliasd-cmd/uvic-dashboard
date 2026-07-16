@@ -134,9 +134,10 @@ def _fetch_leads(creds: dict, dias: int) -> pd.DataFrame:
             # Segundo filtro (por si el server-side no lo cazó): descartar importados.
             if p.get("hs_object_source") == "IMPORT" or p.get("hs_analytics_source_data_1") == "IMPORT":
                 continue
-            # Descartar leads de webinar (uvic_utm_campaign ~ 'webinar'): no son de
-            # la captación WeRise; se gestionan en la hoja de Leads Importados.
-            if config.es_webinar(p.get("uvic_utm_campaign")):
+            # Descartar leads de webinar SIN UTMs de ads: van a la hoja de Leads
+            # Importados. Si traen ig/ads etc., son leads de campaña y se quedan.
+            if config.excluir_webinar(p.get("uvic_utm_campaign"),
+                                      p.get("uvic_utm_source"), p.get("uvic_utm_medium")):
                 continue
             curso = p.get("uvic_curso") or ""
             estado = MAPA_LIFECYCLE.get((p.get("lifecyclestage") or "").lower(), "Lead")
@@ -238,12 +239,13 @@ def _programa_por_deal(token: str, deal_ids: list[str]) -> dict:
     if not contact_ids:
         return {}
 
-    # 2) contacto -> uvic_curso + uvic_utm_campaign (batch read)
+    # 2) contacto -> uvic_curso + UTMs (batch read)
     try:
         r = requests.post(
             f"{API}/crm/v3/objects/contacts/batch/read",
             headers=_headers(token),
-            json={"properties": ["uvic_curso", "uvic_utm_campaign"],
+            json={"properties": ["uvic_curso", "uvic_utm_campaign",
+                                 "uvic_utm_source", "uvic_utm_medium"],
                   "inputs": [{"id": c} for c in contact_ids]}, timeout=60)
         r.raise_for_status()
         props_por_contacto = {
@@ -258,7 +260,8 @@ def _programa_por_deal(token: str, deal_ids: list[str]) -> dict:
         p = props_por_contacto.get(cid, {})
         out[did] = dict(
             programa=config.programa_por_curso(p.get("uvic_curso") or ""),
-            webinar=config.es_webinar(p.get("uvic_utm_campaign")),
+            webinar=config.excluir_webinar(p.get("uvic_utm_campaign"),
+                                           p.get("uvic_utm_source"), p.get("uvic_utm_medium")),
         )
     return out
 
@@ -326,7 +329,8 @@ def _fetch_importados(creds: dict):
         ],
         "properties": ["uvic_curso", "uvic_nivel_estudios", "createdate", "lifecyclestage",
                        "hs_lead_status", "firstname", "lastname", "email", "num_associated_deals",
-                       "uvic_utm_campaign", "hs_object_source"],
+                       "uvic_utm_campaign", "uvic_utm_source", "uvic_utm_medium",
+                       "hs_object_source"],
         "limit": 100,
     }
     contactos, after = [], None
@@ -345,6 +349,12 @@ def _fetch_importados(creds: dict):
     filas = []
     for c in contactos:
         p = c.get("properties", {})
+        es_import = p.get("hs_object_source") == "IMPORT"
+        # Un webinar CON UTMs de ads (p.ej. ig/ads) es lead de campaña: no va aquí
+        # (salvo que además sea IMPORT).
+        if not es_import and not config.excluir_webinar(
+                p.get("uvic_utm_campaign"), p.get("uvic_utm_source"), p.get("uvic_utm_medium")):
+            continue
         nombre = f"{p.get('firstname','') or ''} {p.get('lastname','') or ''}".strip()
         filas.append(dict(
             lead_id=c.get("id"),
@@ -362,7 +372,7 @@ def _fetch_importados(creds: dict):
         ))
     leads = pd.DataFrame(filas)
 
-    ids = [c["id"] for c in contactos]
+    ids = leads["lead_id"].tolist() if not leads.empty else []
     negocios = _negocios_de_contactos(token, ids, mapa)
     return leads, negocios
 

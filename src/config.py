@@ -169,10 +169,18 @@ def es_campana_werise(nombre_campana: str) -> bool:
 
 
 def es_webinar(utm_campaign: str) -> bool:
-    """True si el lead viene de un webinar (uvic_utm_campaign contiene 'webinar':
-    p.ej. 'WebInar', 'WEBINAR EMBA - IA ABRIL'). Estos leads NO son de la captación
-    de las campañas WeRise y se gestionan en la hoja de Leads Importados."""
+    """True si uvic_utm_campaign contiene 'webinar' (p.ej. 'WebInar',
+    'WEBINAR EMBA - IA ABRIL')."""
     return "webinar" in (utm_campaign or "").lower()
+
+
+def excluir_webinar(utm_campaign: str, utm_source: str = "", utm_medium: str = "") -> bool:
+    """True si el lead debe salir de la captación por ser de webinar.
+    EXCEPCIÓN: si sus UTMs apuntan a una plataforma de pago (Meta/Google,
+    p.ej. ig/ads), es lead de ads aunque la campaña diga webinar → se queda
+    en captación. El resto de webinars va a la hoja de Leads Importados."""
+    return (es_webinar(utm_campaign)
+            and plataforma_por_utm(utm_source, utm_medium) not in ("Meta", "Google"))
 
 
 def plataforma_por_utm(source: str, medium: str) -> str:
