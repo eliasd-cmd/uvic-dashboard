@@ -55,9 +55,13 @@ ui.kpi(c6, "Resultados (leads web)", num(resultados),
 ui.kpi(c7, "Coste/resultado", eur(coste_resultado, 2) if resultados else "—",
        "Inversión / resultados Meta",
        estado=config.estado_bench("cpl", coste_resultado) if resultados else "off")
-ui.kpi(c8, "CPL real (GA4)", eur(cpl_real, 2) if ev_meta else "—",
-       f"{num(ev_meta)} eventos clave · fuentes Meta",
-       estado=config.estado_bench("cpl", cpl_real) if ev_meta else None)
+# Leads reales en HubSpot con UTM de Meta (uvic_utm_source in ig/fb/facebook/meta).
+leads_meta_hs = datos.leads[datos.leads["fuente"] == "Meta"] if "fuente" in datos.leads else datos.leads.iloc[0:0]
+n_leads_hs = len(leads_meta_hs)
+cpl_hs = r["coste"] / n_leads_hs if n_leads_hs else 0
+ui.kpi(c8, "CPL real (HubSpot)", eur(cpl_hs, 2) if n_leads_hs else "—",
+       f"{num(n_leads_hs)} leads con UTM de Meta",
+       estado=config.estado_bench("cpl", cpl_hs) if n_leads_hs else None)
 
 if resultados == 0:
     st.warning(
@@ -66,10 +70,42 @@ if resultados == 0:
     )
 else:
     st.caption(
-        f"Meta atribuye **{num(resultados)}** leads web · GA4 registra **{num(ev_meta)}** eventos clave "
-        f"de fuentes Meta · HubSpot tiene **{num(len(datos.leads))}** leads UVic (todas las fuentes, "
-        "asociados por programa)."
+        f"Las 3 mediciones · Meta atribuye **{num(resultados)}** leads web · GA4 registra "
+        f"**{num(ev_meta)}** eventos clave de fuentes Meta (CPL {eur(cpl_real,2) if ev_meta else '—'}) · "
+        f"HubSpot tiene **{num(n_leads_hs)}** leads con UTM de Meta de {num(len(datos.leads))} totales."
     )
+
+# --- Comparativa de medición por campaña ------------------------------------- #
+st.subheader("Comparativa de medición por campaña")
+st.caption("Resultados según cada fuente: Meta (plataforma) · HubSpot (leads con `uvic_utm_campaign`) · GA4 (eventos clave de fuentes meta/fb/ig).")
+_mm = df.groupby("campana")["conversiones"].sum().astype(int)
+_lh = (leads_meta_hs.groupby("campana").size() if n_leads_hs else None)
+_gm = datos.ga4_campana
+_gv = None
+if not _gm.empty and {"fuente", "campana", "eventos_clave"}.issubset(_gm.columns):
+    _g = _gm[_gm["fuente"].str.lower().isin(_FUENTES_META)].copy()
+    _g["campana"] = _g["campana"].str.replace("+", " ", regex=False)  # unificar UTMs codificadas
+    _gv = _g.groupby("campana")["eventos_clave"].sum()
+_comp = []
+for camp in _mm.index:
+    _comp.append(dict(
+        campana=camp,
+        resultados_meta=int(_mm.get(camp, 0)),
+        leads_hubspot=int(_lh.get(camp, 0)) if _lh is not None else 0,
+        eventos_ga4=int(_gv.get(camp, 0)) if _gv is not None else 0,
+    ))
+import pandas as _pd
+ui.tabla_totales(
+    _pd.DataFrame(_comp),
+    columnas=["campana", "resultados_meta", "leads_hubspot", "eventos_ga4"],
+    sum_cols=["resultados_meta", "leads_hubspot", "eventos_ga4"],
+    column_config={
+        "campana": "Campaña",
+        "resultados_meta": st.column_config.NumberColumn("Resultados Meta", format="%d"),
+        "leads_hubspot": st.column_config.NumberColumn("Leads HubSpot (UTM)", format="%d"),
+        "eventos_ga4": st.column_config.NumberColumn("Eventos clave GA4", format="%d"),
+    },
+)
 
 # --- Observaciones automáticas ---------------------------------------------- #
 camp = metrics.resumen_campana(df)

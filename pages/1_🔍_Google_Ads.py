@@ -54,16 +54,21 @@ ui.kpi(c6, "Resultados (conversiones)", num(resultados),
 ui.kpi(c7, "Coste/resultado", eur(coste_resultado, 2) if resultados else "—",
        "Inversión / conversiones Google",
        estado=config.estado_bench("cpl", coste_resultado) if resultados else "off")
-ui.kpi(c8, "CPL real (GA4)", eur(cpl_real, 2) if ev_google else "—",
-       f"{num(ev_google)} eventos clave · google/cpc",
-       estado=config.estado_bench("cpl", cpl_real) if ev_google else None)
+# Leads reales en HubSpot con UTM de Google.
+leads_g_hs = datos.leads[datos.leads["fuente"] == "Google"] if "fuente" in datos.leads else datos.leads.iloc[0:0]
+n_leads_g = len(leads_g_hs)
+cpl_hs = r["coste"] / n_leads_g if n_leads_g else 0
+ui.kpi(c8, "CPL real (HubSpot)", eur(cpl_hs, 2) if n_leads_g else "—",
+       f"{num(n_leads_g)} leads con UTM de Google",
+       estado=config.estado_bench("cpl", cpl_hs) if n_leads_g else None)
 
 if resultados == 0:
     st.warning("Google no está atribuyendo conversiones pese al gasto. Revisa *Tracking & Atribución*.")
 else:
     st.caption(
-        f"Google atribuye **{num(resultados)}** conversiones · GA4 registra **{num(ev_google)}** eventos "
-        f"clave de google/cpc · HubSpot tiene **{num(len(datos.leads))}** leads UVic (todas las fuentes)."
+        f"Las 3 mediciones · Google atribuye **{num(resultados)}** conversiones · GA4 registra "
+        f"**{num(ev_google)}** eventos clave de google/cpc (CPL {eur(cpl_real,2) if ev_google else '—'}) · "
+        f"HubSpot tiene **{num(n_leads_g)}** leads con UTM de Google de {num(len(datos.leads))} totales."
     )
 
 # --- Observaciones automáticas ---------------------------------------------- #

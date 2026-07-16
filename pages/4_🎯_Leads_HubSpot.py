@@ -67,6 +67,37 @@ with col_b:
     st.subheader("Embudo Pipeline UVIC")
     ui.embudo_chart(metrics.embudo(deals))
 
+# --- Atribución por UTM (fuente y campaña) ----------------------------------- #
+st.subheader("Atribución por UTM (fuente y campaña)")
+con_utm = int((leads["fuente"] != "Sin UTM").sum()) if "fuente" in leads.columns else 0
+st.caption(
+    f"**{pct(con_utm/total if total else 0)}** de los leads llega con UTM "
+    f"({num(con_utm)} de {num(total)}). Fuente derivada de `uvic_utm_source/medium`; "
+    "campaña de `uvic_utm_campaign`."
+)
+col_c, col_d = st.columns([0.4, 0.6])
+with col_c:
+    por_fuente = leads.groupby("fuente", as_index=False)["lead_id"].count().rename(
+        columns={"lead_id": "leads"})
+    ui.donut(por_fuente, nombres="fuente", valores="leads", titulo="")
+with col_d:
+    con_camp = leads[leads["campana"] != ""]
+    if not con_camp.empty:
+        por_camp = (con_camp.groupby(["fuente", "campana"], as_index=False)["lead_id"].count()
+                    .rename(columns={"lead_id": "leads"})
+                    .sort_values("leads", ascending=False))
+        ui.tabla_totales(
+            por_camp,
+            columnas=["fuente", "campana", "leads"],
+            sum_cols=["leads"],
+            column_config={
+                "fuente": "Fuente", "campana": "Campaña (UTM)",
+                "leads": st.column_config.NumberColumn("Leads", format="%d"),
+            },
+        )
+    else:
+        st.info("Ningún lead del periodo trae campaña en la UTM.")
+
 st.subheader("Tasas de conversión del embudo")
 te = metrics.tasas_embudo(deals)
 if not te.empty:
@@ -105,7 +136,7 @@ if not cruce.empty:
     )
 
 st.subheader("Leads recientes")
-cols = [c for c in ["lead_id", "fecha_creacion", "programa", "nivel", "estado", "fuente"]
+cols = [c for c in ["lead_id", "fecha_creacion", "programa", "nivel", "estado", "fuente", "campana"]
         if c in leads.columns]
 st.dataframe(
     leads.sort_values("fecha_creacion", ascending=False).head(50)[cols],
@@ -113,10 +144,12 @@ st.dataframe(
     column_config={
         "lead_id": "ID", "fecha_creacion": "Creado", "programa": "Programa",
         "nivel": "Nivel estudios", "estado": "Estado", "fuente": "Fuente",
+        "campana": "Campaña (UTM)",
     },
 )
 st.caption(
-    "La campaña exacta no se captura (leads OFFLINE → se pierde gclid/fbclid). La asociación "
-    "con inversión es **por programa** vía `uvic_curso`. Recuperar el click-id es la palanca #1 "
-    "para medir CPL por campaña."
+    "La **fuente y campaña** vienen de las UTMs propias (`uvic_utm_*`), que hoy llegan en parte de "
+    "los leads; el resto entra sin UTM. La asociación con inversión sigue siendo **por programa** "
+    "(`uvic_curso`), que cubre el 100%. Elevar el % de leads con UTM es la palanca para medir CPL "
+    "por campaña de forma completa."
 )

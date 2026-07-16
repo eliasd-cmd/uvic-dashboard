@@ -88,6 +88,8 @@ _LBL_TOTAL = {
     "sesiones": "Sesiones", "usuarios": "Usuarios", "eventos": "Eventos",
     "eventos_clave": "Eventos clave", "vistas": "Páginas vistas",
     "rebote": "Rebote", "duracion_media": "Dur. media",
+    "resultados_meta": "Meta", "leads_hubspot": "HubSpot", "eventos_ga4": "GA4",
+    "leads": "Leads",
 }
 
 

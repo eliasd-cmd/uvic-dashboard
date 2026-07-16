@@ -172,13 +172,21 @@ def hubspot_leads(dias: int = 30) -> pd.DataFrame:
     for f in fechas:
         n_dia = int(r.normal(18, 5))
         for _ in range(max(0, n_dia)):
-            programa = programas[r.choice(len(programas))]
+            prog = PROGRAMAS[r.choice(len(PROGRAMAS))]
             estado = estados[r.choice(len(estados), p=prob_estado)]
             lead_id += 1
+            # ~40% con UTM (mitad Meta, algo de Google), resto sin UTM.
+            dado = r.uniform(0, 1)
+            if dado < 0.25:
+                fuente, us, um, camp = "Meta", "ig", "ads", prog.campana_meta
+            elif dado < 0.40:
+                fuente, us, um, camp = "Google", "google", "ads", prog.campana_google
+            else:
+                fuente, us, um, camp = "Sin UTM", "", "", ""
             filas.append(dict(
                 lead_id=f"C{lead_id}", fecha_creacion=f,
-                fuente="OFFLINE", campana="", programa=programa,
-                nivel="Master", estado=estado,
+                fuente=fuente, utm_source=us, utm_medium=um, campana=camp,
+                programa=prog.nombre, nivel="Master", estado=estado,
                 es_matricula=(estado == "Matriculado"),
             ))
     return pd.DataFrame(filas)

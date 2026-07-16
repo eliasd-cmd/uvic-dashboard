@@ -165,6 +165,20 @@ def es_campana_werise(nombre_campana: str) -> bool:
     return programa_por_campana(nombre_campana) not in ("Otras / Branding", "Sin asignar")
 
 
+def plataforma_por_utm(source: str, medium: str) -> str:
+    """Deriva la plataforma desde las UTM de HubSpot (uvic_utm_source/medium).
+    Meta = ig/fb/facebook/meta; Google = google. Sin UTM si viene vacío."""
+    s = (source or "").strip().lower()
+    m = (medium or "").strip().lower()
+    if not s and not m:
+        return "Sin UTM"
+    if s in ("ig", "fb", "facebook", "meta", "instagram") or m == "paid-social":
+        return "Meta"
+    if s == "google" or m in ("cpc", "ppc"):
+        return "Google"
+    return s or "Otra"
+
+
 def programa_por_curso(uvic_curso: str) -> str:
     """Devuelve el nombre del programa dado el valor de `uvic_curso` (HubSpot)."""
     if not uvic_curso:

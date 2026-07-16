@@ -117,7 +117,8 @@ def _fetch_leads(creds: dict, dias: int) -> pd.DataFrame:
         }],
         "properties": ["uvic_curso", "uvic_nivel_estudios", "createdate",
                        "lifecyclestage", "hs_lead_status", "hs_analytics_source",
-                       "hs_object_source", "hs_analytics_source_data_1"],
+                       "hs_object_source", "hs_analytics_source_data_1",
+                       "uvic_utm_source", "uvic_utm_medium", "uvic_utm_campaign"],
         "limit": 100,
     }
     filas, after = [], None
@@ -135,11 +136,16 @@ def _fetch_leads(creds: dict, dias: int) -> pd.DataFrame:
                 continue
             curso = p.get("uvic_curso") or ""
             estado = MAPA_LIFECYCLE.get((p.get("lifecyclestage") or "").lower(), "Lead")
+            utm_source = p.get("uvic_utm_source") or ""
+            utm_medium = p.get("uvic_utm_medium") or ""
             filas.append(dict(
                 lead_id=c.get("id"),
                 fecha_creacion=_a_fecha(p.get("createdate")),
-                fuente=p.get("hs_analytics_source") or "Sin atribuir",
-                campana="",  # atribución de campaña perdida (OFFLINE/INTEGRATION)
+                # Fuente derivada de las UTM propias (uvic_utm_*): Meta/Google/Sin UTM.
+                fuente=config.plataforma_por_utm(utm_source, utm_medium),
+                utm_source=utm_source,
+                utm_medium=utm_medium,
+                campana=p.get("uvic_utm_campaign") or "",
                 programa=config.programa_por_curso(curso),
                 nivel=p.get("uvic_nivel_estudios") or "",
                 estado=estado,
