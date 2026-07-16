@@ -73,17 +73,18 @@ st.write("")
 # --------------------------------------------------------------------------- #
 # Fila B — Embudo comercial
 # --------------------------------------------------------------------------- #
-c5, c6, c7, c8 = st.columns(4)
+c5, c6, c7, c8, c9 = st.columns(5)
 ui.kpi(c5, "Leads UVic", num(k["leads_total"]),
        "Contactos con uvic_curso", delta=t_leads["delta"], delta_bueno=True)
-ui.kpi(c6, "Oportunidades", num(k["deals_totales"]),
+n_webinar = int((datos.leads_import["motivo"] == "Webinar").sum()) \
+    if "motivo" in datos.leads_import.columns else 0
+ui.kpi(c6, "Leads WebInar", num(n_webinar),
+       "Fuera del cómputo de campañas")
+ui.kpi(c7, "Oportunidades", num(k["deals_totales"]),
        f"Coste/oport. {eur(k['coste_por_oportunidad'])}",
        delta=t_deals["delta"], delta_bueno=True)
-pace_mat = k["matriculas"] / config.OBJETIVO_MATRICULAS if config.OBJETIVO_MATRICULAS else 0
-ui.kpi(c7, "Matrículas", f"{num(k['matriculas'])} / {config.OBJETIVO_MATRICULAS}",
-       f"{pct(pace_mat)} del objetivo",
-       estado="ok" if pace_mat >= 0.9 else ("warn" if pace_mat >= 0.5 else "off"))
-ui.kpi(c8, "ROAS", f"{num(k['roas'],2)}×",
+ui.kpi(c8, "Matrículas", num(k["matriculas"]))
+ui.kpi(c9, "ROAS", f"{num(k['roas'],2)}×",
        f"Ingresos est.: {eur(k['ingresos'])}",
        estado=config.estado_bench("roas", k["roas"]))
 
