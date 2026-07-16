@@ -44,19 +44,29 @@ def generar(datos) -> dict:
             texto="Configurar conversiones offline de Google Ads desde el lead de HubSpot",
             impacto="Alto", esfuerzo="Medio"))
 
-    # --- CPL neto vs objetivo --------------------------------------------- #
+    # --- CPL neto vs rango objetivo (replanificación jul-2026: 50-70 €) ---- #
     if k["cpl_neto"] > 0:
         est = config.estado_bench("cpl", k["cpl_neto"])
+        rango = f"{num(config.CPL_OBJETIVO_MIN)}–{num(config.CPL_OBJETIVO_MAX)} €"
         if est == "ok":
-            wins.append(f"**CPL neto {eur(k['cpl_neto'],2)}** por debajo del objetivo ({eur(config.CPL_OBJETIVO)}).")
+            wins.append(f"**CPL neto {eur(k['cpl_neto'],2)}** dentro del rango objetivo ({rango}).")
         else:
             concerns.append(
-                f"**CPL neto {eur(k['cpl_neto'],2)}** por encima del objetivo ({eur(config.CPL_OBJETIVO)}). "
-                "Parte del efecto es el etiquetado `uvic_curso` incompleto (infra-cuenta leads)."
+                f"**CPL neto {eur(k['cpl_neto'],2)}** por encima del rango objetivo ({rango})."
+            )
+
+    # --- Captura de UTM (calidad de la atribución por campaña) ------------- #
+    if not datos.leads.empty and "fuente" in datos.leads.columns:
+        con_utm = int((datos.leads["fuente"] != "Sin UTM").sum())
+        pct_utm = con_utm / len(datos.leads)
+        if pct_utm < 0.8:
+            concerns.append(
+                f"Solo el **{pct(pct_utm)}** de los leads llega con UTM ({con_utm} de "
+                f"{len(datos.leads)}): la atribución por campaña está incompleta."
             )
             recos.append(dict(
-                texto="Ampliar el etiquetado `uvic_curso` a todos los leads UVic para medir el CPL real",
-                impacto="Medio", esfuerzo="Bajo"))
+                texto="Asegurar que TODOS los leads pasan UTMs (`uvic_utm_*`) de la landing al CRM",
+                impacto="Alto", esfuerzo="Medio"))
 
     # --- Mejor y peor programa por CPL ------------------------------------ #
     if not cruce.empty:

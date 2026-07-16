@@ -45,8 +45,11 @@ OBJETIVO_MATRICULAS = 57
 # Input clave para el cálculo de ROAS (ingresos = matrículas × VALOR_MATRICULA).
 VALOR_MATRICULA = 2100.0
 
-# CPL objetivo (coste por lead) de referencia para el semáforo. Ajustable.
-CPL_OBJETIVO = 45.0
+# CPL objetivo — rango acordado en la replanificación (jul-2026): 50-70 €.
+# El semáforo usa el máximo del rango como umbral verde.
+CPL_OBJETIVO_MIN = 50.0
+CPL_OBJETIVO_MAX = 70.0
+CPL_OBJETIVO = CPL_OBJETIVO_MAX  # compatibilidad: umbral del semáforo
 
 # Tasa de conversión lead -> matrícula esperada (para el forecast del embudo).
 TASA_LEAD_A_MATRICULA = 0.06  # 6%

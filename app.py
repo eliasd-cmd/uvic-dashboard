@@ -65,7 +65,7 @@ ui.kpi(c1, "Inversión (G+M)", eur(k["inversion"]),
 ui.kpi(c2, "CTR medio", pct(k["ctr_medio"], 2), "Clics / impresiones")
 ui.kpi(c3, "CPC medio", eur(k["cpc_medio"], 2), "Inversión / clics")
 ui.kpi(c4, "CPL neto", eur(k["cpl_neto"], 2),
-       f"Objetivo ≤ {eur(config.CPL_OBJETIVO)}",
+       f"Objetivo {num(config.CPL_OBJETIVO_MIN)}–{num(config.CPL_OBJETIVO_MAX)} €",
        estado=config.estado_bench("cpl", k["cpl_neto"]))
 
 st.write("")
