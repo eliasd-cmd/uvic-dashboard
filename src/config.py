@@ -267,8 +267,10 @@ class Tema:
     gris_uvic: str = "#4B4B4B"      # gris corporativo
     texto: str = "#212529"          # texto casi negro
     # Colores de identidad por plataforma (se mantienen para distinguir series).
+    # Meta usa el violeta de su degradado de marca para no confundirse con el
+    # azul de Google en las gráficas.
     color_google: str = "#4285F4"
-    color_meta: str = "#0866FF"
+    color_meta: str = "#A333C8"
     color_ga4: str = "#E8710A"
     color_hubspot: str = "#FF7A59"
     # Semáforo de estado.
@@ -277,7 +279,7 @@ class Tema:
     rojo_off: str = "#CF0A2C"
     # Paleta de gráficos: lidera el granate UVic, luego neutros y acentos.
     paleta: tuple = field(default_factory=lambda: (
-        "#CF0A2C", "#4B4B4B", "#7C061A", "#E8710A", "#0866FF", "#198754",
+        "#CF0A2C", "#4B4B4B", "#7C061A", "#E8710A", "#A333C8", "#198754",
     ))
 
 
