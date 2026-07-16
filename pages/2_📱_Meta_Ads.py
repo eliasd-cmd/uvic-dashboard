@@ -24,24 +24,52 @@ if df.empty:
 
 r = metrics.resumen_plataforma(df).iloc[0]
 t_inv = metrics.tendencia(df, "coste", "fecha")
+resultados = int(r["conversiones"])                       # leads web atribuidos por Meta
+tasa_resultados = resultados / r["clics"] if r["clics"] else 0
+coste_resultado = r["coste"] / resultados if resultados else 0
 
-c1, c2, c3, c4, c5 = st.columns(5)
+# CPL real: eventos clave de GA4 llegados desde fuentes Meta (meta/fb/ig/an).
+_FUENTES_META = {"meta", "fb", "ig", "an", "facebook", "instagram"}
+ev_meta = 0
+gf = datos.ga4_fuente
+if not gf.empty and "fuente" in gf.columns and "eventos_clave" in gf.columns:
+    ev_meta = int(gf[gf["fuente"].str.lower().isin(_FUENTES_META)]["eventos_clave"].sum())
+cpl_real = r["coste"] / ev_meta if ev_meta else 0
+
+st.subheader("Volumen y coste")
+c1, c2, c3, c4 = st.columns(4)
 ui.kpi(c1, "Inversión", eur(r["coste"]), delta=t_inv["delta"], delta_bueno=True)
 ui.kpi(c2, "Impresiones", num(r["impresiones"]), "Alcance social")
-ui.kpi(c3, "CTR", pct(r["ctr"], 2), f"Benchmark ≥ {pct(config.BENCH['ctr_social']['ok'],1)}",
+ui.kpi(c3, "Clics", num(r["clics"]), f"CTR {pct(r['ctr'],2)}",
        estado=config.estado_bench("ctr_social", r["ctr"]))
-ui.kpi(c4, "CPC medio", eur(r["cpc"], 2), f"Benchmark ≤ {eur(config.BENCH['cpc_social']['ok'],2)}",
-       estado=config.estado_bench("cpc_social", r["cpc"]))
-ui.kpi(c5, "CPM", eur(r["cpm"], 2), f"Benchmark ≤ {eur(config.BENCH['cpm_social']['ok'],1)}",
+ui.kpi(c4, "CPM", eur(r["cpm"], 2), f"Benchmark ≤ {eur(config.BENCH['cpm_social']['ok'],1)}",
        estado=config.estado_bench("cpm_social", r["cpm"]))
 
-# Leads UVic totales (contexto): Meta no atribuye, se ve por programa en HubSpot.
-leads_uvic = len(datos.leads)
-st.warning(
-    f"Meta atribuye **{int(r['conversiones'])} conversiones** en la plataforma, pero HubSpot "
-    f"registra **{num(leads_uvic)} leads UVic** en el periodo. Es la **rotura de atribución** "
-    "(Cloud Pages / pérdida de `fbclid`), no falta de demanda. Ver *Tracking & Atribución*."
-)
+st.subheader("Eficiencia y resultado")
+c5, c6, c7, c8 = st.columns(4)
+ui.kpi(c5, "CPC medio", eur(r["cpc"], 2), f"Benchmark ≤ {eur(config.BENCH['cpc_social']['ok'],2)}",
+       estado=config.estado_bench("cpc_social", r["cpc"]))
+ui.kpi(c6, "Resultados (leads web)", num(resultados),
+       f"Tasa {pct(tasa_resultados,2)} sobre clics",
+       estado="ok" if resultados > 0 else "off")
+ui.kpi(c7, "Coste/resultado", eur(coste_resultado, 2) if resultados else "—",
+       "Inversión / resultados Meta",
+       estado=config.estado_bench("cpl", coste_resultado) if resultados else "off")
+ui.kpi(c8, "CPL real (GA4)", eur(cpl_real, 2) if ev_meta else "—",
+       f"{num(ev_meta)} eventos clave · fuentes Meta",
+       estado=config.estado_bench("cpl", cpl_real) if ev_meta else None)
+
+if resultados == 0:
+    st.warning(
+        f"Meta no está atribuyendo conversiones pese a que HubSpot registra "
+        f"**{num(len(datos.leads))} leads UVic**. Revisa la página *Tracking & Atribución*."
+    )
+else:
+    st.caption(
+        f"Meta atribuye **{num(resultados)}** leads web · GA4 registra **{num(ev_meta)}** eventos clave "
+        f"de fuentes Meta · HubSpot tiene **{num(len(datos.leads))}** leads UVic (todas las fuentes, "
+        "asociados por programa)."
+    )
 
 # --- Observaciones automáticas ---------------------------------------------- #
 camp = metrics.resumen_campana(df)
