@@ -109,6 +109,56 @@ with col_der:
     if not resumen.empty:
         ui.donut(resumen, nombres="plataforma", valores="coste", titulo="")
 
+# --- Tablas diarias: conversiones de plataforma y leads de HubSpot ----------- #
+col_t1, col_t2 = st.columns(2)
+with col_t1:
+    st.subheader("Conversiones diarias · plataformas")
+    if not datos.ads.empty:
+        conv = (datos.ads.pivot_table(index="fecha", columns="plataforma",
+                                      values="conversiones", aggfunc="sum", fill_value=0)
+                .astype(int).reset_index().sort_values("fecha", ascending=False))
+        conv.columns.name = None
+        plat_cols = [c for c in ("Google Ads", "Meta Ads") if c in conv.columns]
+        conv["total"] = conv[plat_cols].sum(axis=1)
+        ui.tabla_totales(
+            conv,
+            columnas=["fecha", *plat_cols, "total"],
+            sum_cols=[*plat_cols, "total"],
+            column_config={
+                "fecha": st.column_config.DateColumn("Día", format="DD/MM/YYYY"),
+                **{c: st.column_config.NumberColumn(c, format="%d") for c in plat_cols},
+                "total": st.column_config.NumberColumn("Total", format="%d"),
+            },
+        )
+        st.caption("Conversiones atribuidas por cada plataforma (Google/Meta) por día.")
+    else:
+        st.info("Sin datos de plataformas.")
+with col_t2:
+    st.subheader("Leads diarios · HubSpot")
+    if not datos.leads.empty:
+        ld = (datos.leads.pivot_table(index="fecha_creacion", columns="fuente",
+                                      values="lead_id", aggfunc="count", fill_value=0)
+              .astype(int).reset_index().sort_values("fecha_creacion", ascending=False)
+              .rename(columns={"fecha_creacion": "fecha"}))
+        ld.columns.name = None
+        fuente_cols = [c for c in ("Meta", "Google", "Sin UTM") if c in ld.columns]
+        otras = [c for c in ld.columns if c not in ("fecha", *fuente_cols)]
+        fuente_cols += otras
+        ld["total"] = ld[fuente_cols].sum(axis=1)
+        ui.tabla_totales(
+            ld,
+            columnas=["fecha", *fuente_cols, "total"],
+            sum_cols=[*fuente_cols, "total"],
+            column_config={
+                "fecha": st.column_config.DateColumn("Día", format="DD/MM/YYYY"),
+                **{c: st.column_config.NumberColumn(c, format="%d") for c in fuente_cols},
+                "total": st.column_config.NumberColumn("Total", format="%d"),
+            },
+        )
+        st.caption("Leads reales creados en HubSpot por día, desglosados por fuente UTM.")
+    else:
+        st.info("Sin leads en el período.")
+
 col_a, col_b = st.columns(2)
 with col_a:
     st.subheader("Embudo Pipeline UVIC (deals)")
