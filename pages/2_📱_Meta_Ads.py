@@ -128,8 +128,13 @@ ui.linea_temporal(serie, x="fecha", y="coste", color=None, titulo="Inversión �
 st.subheader("Rendimiento por campaña")
 ui.barras(camp, x="coste", y="campana", color="programa",
           titulo="Inversión por campaña", orientacion="h")
-tab = camp[["campana", "programa", "impresiones", "clics", "ctr", "cpc", "coste"]].copy()
+tab = camp[["campana", "programa", "impresiones", "clics", "ctr", "cpc", "coste",
+            "conversiones"]].copy()
 tab["ctr"] = (tab["ctr"] * 100).round(2)  # ratio -> %
+tab["cpl_meta"] = tab.apply(
+    lambda r: r["coste"] / r["conversiones"] if r["conversiones"] else 0, axis=1)
+_map_lh = leads_meta_hs.groupby("campana").size().to_dict() if n_leads_hs else {}
+tab["leads_hubspot"] = tab["campana"].map(_map_lh).fillna(0).astype(int)
 st.dataframe(
     tab, width='stretch', hide_index=True,
     column_config={
@@ -139,5 +144,12 @@ st.dataframe(
         "ctr": st.column_config.NumberColumn("CTR", format="%.2f%%"),
         "cpc": st.column_config.NumberColumn("CPC", format="%.2f €"),
         "coste": st.column_config.NumberColumn("Inversión", format="%.0f €"),
+        "conversiones": st.column_config.NumberColumn("Resultados Meta", format="%d"),
+        "cpl_meta": st.column_config.NumberColumn("CPL Meta", format="%.2f €"),
+        "leads_hubspot": st.column_config.NumberColumn("Leads HubSpot", format="%d"),
     },
+)
+st.caption(
+    "**Resultados Meta** = leads web atribuidos por la plataforma · **CPL Meta** = inversión / "
+    "resultados Meta · **Leads HubSpot** = leads reales con `uvic_utm_campaign` de esa campaña."
 )
