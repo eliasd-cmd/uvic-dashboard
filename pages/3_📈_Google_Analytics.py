@@ -170,3 +170,34 @@ st.caption(
     "**Eventos** = total de interacciones registradas. **Eventos clave** = los marcados "
     "como conversión en GA4. Ambas tablas están filtradas a las 5 landings WeRise."
 )
+
+st.divider()
+
+# --- LEAD vs form_submit por campaña WeRise ---------------------------------- #
+st.subheader("Eventos clave por campaña: LEAD vs form_submit")
+st.caption(
+    "Comparativa de los dos eventos marcados como conversión, solo campañas **WeRise**. "
+    "Sirve para detectar dónde falla cada tag antes de decidir cuál es el evento real."
+)
+ev = datos.ga4_eventos
+if ev.empty:
+    st.info("Sin datos de eventos por campaña.")
+else:
+    cols_ev = [c for c in config.GA4_EVENTOS_CLAVE if c in ev.columns]
+    ui.tabla_totales(
+        ev,
+        columnas=["campana", *cols_ev],
+        sum_cols=cols_ev,
+        column_config={
+            "campana": "Campaña",
+            **{c: st.column_config.NumberColumn(c, format="%d") for c in cols_ev},
+        },
+    )
+    # Diagnóstico automático: campañas donde uno de los eventos no dispara.
+    avisos = []
+    for c in cols_ev:
+        rotas = ev[ev[c] == 0]["campana"].tolist()
+        if rotas:
+            avisos.append(f"**{c}** no registra nada en: {', '.join(rotas)}.")
+    if avisos:
+        st.warning("⚠️ " + " · ".join(avisos) + " Revisa el tag en esa(s) landing(s).")

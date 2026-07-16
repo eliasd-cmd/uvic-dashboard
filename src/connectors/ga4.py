@@ -234,3 +234,62 @@ def obtener_campana(dias: int = 30) -> ResultadoConector:
     return _obtener_agrupado(
         dias, [("sessionSource", "fuente"), ("sessionCampaignName", "campana")],
         "ga4_campana", sample_data.ga4_por_campana)
+
+
+# --------------------------------------------------------------------------- #
+# Desglose de eventos clave por campaña WeRise: una columna por evento
+# (LEAD, form_submit, ...) para comparar qué dispara cada uno.
+# --------------------------------------------------------------------------- #
+def obtener_eventos_campana(dias: int = 30) -> ResultadoConector:
+    creds = _leer_secreto("ga4")
+    if creds and (creds.get("service_account") or creds.get("service_account_file")):
+        try:
+            df = _eventos_campana(creds, dias)
+            if df is not None and not df.empty:
+                guardar_cache(df, "ga4_eventos")
+                return ResultadoConector(df, "api", "GA4 Data API")
+        except Exception as e:  # noqa: BLE001
+            cache = leer_cache("ga4_eventos")
+            if cache is not None:
+                return ResultadoConector(cache, "cache", f"API falló ({e}); caché")
+    cache = leer_cache("ga4_eventos")
+    if cache is not None and not cache.empty:
+        return ResultadoConector(cache, "cache", "Caché local")
+    return ResultadoConector(
+        pd.DataFrame(columns=["campana", *config.GA4_EVENTOS_CLAVE]),
+        "sample", "Sin datos de ejemplo")
+
+
+def _eventos_campana(creds: dict, dias: int) -> pd.DataFrame:
+    from google.analytics.data_v1beta.types import (  # type: ignore
+        DateRange, Dimension, Metric, RunReportRequest,
+    )
+    client, property_id, filtro = _cliente(creds)
+    request = RunReportRequest(
+        property=property_id,
+        dimensions=[Dimension(name="sessionCampaignName"), Dimension(name="eventName")],
+        metrics=[Metric(name="keyEvents")],
+        date_ranges=[DateRange(start_date=f"{dias}daysAgo", end_date="today")],
+        dimension_filter=filtro,
+        limit=500,
+    )
+    resp = client.run_report(request)
+    filas = []
+    for row in resp.rows:
+        campana = row.dimension_values[0].value.replace("+", " ")  # unificar UTMs codificadas
+        evento = row.dimension_values[1].value
+        n = int(float(row.metric_values[0].value or 0))
+        if evento in config.GA4_EVENTOS_CLAVE and n > 0 and campana.lower().startswith("werise"):
+            filas.append(dict(campana=campana, evento=evento, n=n))
+    if not filas:
+        return pd.DataFrame()
+    df = (pd.DataFrame(filas)
+          .pivot_table(index="campana", columns="evento", values="n",
+                       aggfunc="sum", fill_value=0)
+          .reset_index())
+    df.columns.name = None
+    for ev in config.GA4_EVENTOS_CLAVE:  # garantizar todas las columnas
+        if ev not in df.columns:
+            df[ev] = 0
+    df["total"] = df[config.GA4_EVENTOS_CLAVE].sum(axis=1)
+    return df.sort_values("total", ascending=False).drop(columns="total")
