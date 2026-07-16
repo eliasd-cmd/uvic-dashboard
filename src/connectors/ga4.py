@@ -114,9 +114,12 @@ def _consultar_api(creds: dict, dias: int) -> pd.DataFrame:
 
 # --------------------------------------------------------------------------- #
 # Agrupaciones extra de las 5 landings: por fuente/medio y por campaña.
-# Incluyen eventos (eventCount) y eventos clave (keyEvents).
+# Incluyen eventos (eventCount) y eventos clave (SOLO los de GA4_EVENTOS_CLAVE:
+# LEAD + form_submit; el resto de key events se ignora).
 # --------------------------------------------------------------------------- #
-_MET_EXTRA = ["sessions", "totalUsers", "eventCount", "keyEvents"]
+def _mets_extra() -> list[str]:
+    return (["sessions", "totalUsers", "eventCount"]
+            + [f"keyEvents:{e}" for e in config.GA4_EVENTOS_CLAVE])
 
 
 def _report_agrupado(creds: dict, dias: int, dims: list[tuple[str, str]]) -> pd.DataFrame:
@@ -126,10 +129,11 @@ def _report_agrupado(creds: dict, dias: int, dims: list[tuple[str, str]]) -> pd.
         DateRange, Dimension, Metric, RunReportRequest,
     )
     client, property_id, filtro = _cliente(creds)
+    mets = _mets_extra()
     request = RunReportRequest(
         property=property_id,
         dimensions=[Dimension(name=g) for g, _ in dims],
-        metrics=[Metric(name=m) for m in _MET_EXTRA],
+        metrics=[Metric(name=m) for m in mets],
         date_ranges=[DateRange(start_date=f"{dias}daysAgo", end_date="today")],
         dimension_filter=filtro,
     )
@@ -142,7 +146,8 @@ def _report_agrupado(creds: dict, dias: int, dims: list[tuple[str, str]]) -> pd.
             sesiones=int(m[0].value or 0),
             usuarios=int(m[1].value or 0),
             eventos=int(float(m[2].value or 0)),
-            eventos_clave=int(float(m[3].value or 0)),
+            # suma de los key events configurados (LEAD + form_submit)
+            eventos_clave=sum(int(float(m[i].value or 0)) for i in range(3, len(mets))),
         )
         filas.append(fila)
     df = pd.DataFrame(filas)
@@ -194,8 +199,9 @@ def _resumen(creds: dict, dias: int) -> pd.DataFrame:
         DateRange, Metric, RunReportRequest,
     )
     client, property_id, filtro = _cliente(creds)
-    mets = ["sessions", "totalUsers", "newUsers", "screenPageViews",
-            "engagementRate", "averageSessionDuration", "keyEvents"]
+    mets = (["sessions", "totalUsers", "newUsers", "screenPageViews",
+             "engagementRate", "averageSessionDuration"]
+            + [f"keyEvents:{e}" for e in config.GA4_EVENTOS_CLAVE])
     request = RunReportRequest(
         property=property_id,
         metrics=[Metric(name=m) for m in mets],
@@ -213,7 +219,8 @@ def _resumen(creds: dict, dias: int) -> pd.DataFrame:
         vistas=int(float(m[3].value or 0)),
         engagement=round(float(m[4].value or 0), 4),
         duracion_media=round(float(m[5].value or 0), 0),
-        eventos_clave=int(float(m[6].value or 0)),
+        # suma de los key events configurados (LEAD + form_submit)
+        eventos_clave=sum(int(float(m[i].value or 0)) for i in range(6, len(mets))),
     )])
 
 

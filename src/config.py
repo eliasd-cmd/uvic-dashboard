@@ -206,6 +206,9 @@ LANDINGS = list(LANDING_PROGRAMA.keys())
 # Fuentes de prueba/test a EXCLUIR del tráfico y eventos de GA4 (no son reales).
 GA4_FUENTES_EXCLUIR = ["pixel-doctor", "metaCLAUDETEST"]
 
+# Eventos clave de GA4 que cuentan como conversión (los demás se ignoran).
+GA4_EVENTOS_CLAVE = ["LEAD", "form_submit"]
+
 
 def programa_por_landing(page_path: str) -> str:
     """Mapea la ruta de una landing (GA4 pagePath/landingPage) a su programa."""
