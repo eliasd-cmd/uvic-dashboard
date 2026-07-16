@@ -111,6 +111,18 @@ def ga4_diario(dias: int = 30) -> pd.DataFrame:
     return pd.DataFrame(filas)
 
 
+def ga4_resumen(dias: int = 30) -> pd.DataFrame:
+    """Totales de ejemplo del periodo para las 5 landings."""
+    d = ga4_diario(dias)
+    ses = int(d["sesiones"].sum())
+    usu = int(ses * 0.82)
+    return pd.DataFrame([dict(
+        sesiones=ses, usuarios=usu, usuarios_nuevos=int(usu * 0.9),
+        vistas=int(d["vistas"].sum()), engagement=0.44,
+        duracion_media=95.0, eventos_clave=int(ses * 0.05),
+    )])
+
+
 def ga4_por_fuente(dias: int = 30) -> pd.DataFrame:
     """Tráfico de ejemplo por fuente/medio de las 5 landings."""
     r = _rng("ga4-fuente")

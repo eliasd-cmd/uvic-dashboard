@@ -27,6 +27,7 @@ class DatosDashboard:
     origen_import: str = "sample"
     ga4_fuente: pd.DataFrame = field(default_factory=pd.DataFrame)
     ga4_campana: pd.DataFrame = field(default_factory=pd.DataFrame)
+    ga4_resumen: pd.DataFrame = field(default_factory=pd.DataFrame)
 
     @property
     def ads(self) -> pd.DataFrame:
@@ -56,7 +57,8 @@ def _cargar_ga4(dias: int):
     r = ga4.obtener(dias)
     rf = ga4.obtener_fuente(dias)
     rc = ga4.obtener_campana(dias)
-    return r.df, r.origen, r.detalle, rf.df, rc.df
+    rr = ga4.obtener_resumen(dias)
+    return r.df, r.origen, r.detalle, rf.df, rc.df, rr.df
 
 
 @st.cache_data(ttl=config.CACHE_TTL_HUBSPOT, show_spinner="Cargando HubSpot…")
@@ -75,7 +77,7 @@ def _cargar_importados():
 def cargar_todo(dias: int = 30) -> DatosDashboard:
     g_df, g_o, g_d = _cargar_google(dias)
     m_df, m_o, m_d = _cargar_meta(dias)
-    a_df, a_o, a_d, af_df, ac_df = _cargar_ga4(dias)
+    a_df, a_o, a_d, af_df, ac_df, ar_df = _cargar_ga4(dias)
     l_df, l_o, l_d, d_df = _cargar_hubspot(dias)
     li_df, ni_df, oi = _cargar_importados()
     return DatosDashboard(
@@ -93,5 +95,5 @@ def cargar_todo(dias: int = 30) -> DatosDashboard:
             "HubSpot": l_d,
         },
         leads_import=li_df, negocios_import=ni_df, origen_import=oi,
-        ga4_fuente=af_df, ga4_campana=ac_df,
+        ga4_fuente=af_df, ga4_campana=ac_df, ga4_resumen=ar_df,
     )

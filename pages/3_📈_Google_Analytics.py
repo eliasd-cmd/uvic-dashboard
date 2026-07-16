@@ -23,19 +23,43 @@ if df.empty:
     st.warning("No hay datos de GA4.")
     st.stop()
 
-tot_ses = int(df["sesiones"].sum())
-tot_usr = int(df["usuarios"].sum())
-tot_vis = int(df["vistas"].sum()) if "vistas" in df else 0
-rebote = df["rebote"].mean() if "rebote" in df else 0
-pags_ses = tot_vis / tot_ses if tot_ses else 0
 t_ses = metrics.tendencia(df, "sesiones", "fecha")
 
+# Totales exactos del periodo (consulta sin fecha); fallback a sumas diarias.
+if not datos.ga4_resumen.empty:
+    res = datos.ga4_resumen.iloc[0]
+    tot_ses = int(res["sesiones"]); tot_usr = int(res["usuarios"])
+    nuevos = int(res["usuarios_nuevos"]); tot_vis = int(res["vistas"])
+    engagement = float(res["engagement"]); duracion = float(res["duracion_media"])
+    conversiones = int(res["eventos_clave"])
+else:
+    tot_ses = int(df["sesiones"].sum()); tot_usr = int(df["usuarios"].sum())
+    nuevos = 0; tot_vis = int(df["vistas"].sum()) if "vistas" in df else 0
+    engagement = 1 - (df["rebote"].mean() if "rebote" in df else 0)
+    w = df["sesiones"].sum()
+    duracion = float((df["duracion_media"] * df["sesiones"]).sum() / w) if w else 0
+    conversiones = int(datos.ga4_fuente["eventos_clave"].sum()) if not datos.ga4_fuente.empty else 0
+
+pct_nuevos = nuevos / tot_usr if tot_usr else 0
+pags_ses = tot_vis / tot_ses if tot_ses else 0
+tasa_conv = conversiones / tot_ses if tot_ses else 0
+dur_fmt = f"{int(duracion // 60)}m {int(duracion % 60):02d}s"
+
+st.subheader("Adquisición")
 c1, c2, c3, c4 = st.columns(4)
 ui.kpi(c1, "Sesiones", num(tot_ses), delta=t_ses["delta"], delta_bueno=True)
-ui.kpi(c2, "Usuarios", num(tot_usr), "Únicos")
-ui.kpi(c3, "Páginas / sesión", f"{pags_ses:.2f}", "Profundidad de visita")
-ui.kpi(c4, "Rebote medio", pct(rebote), f"Benchmark ≤ {pct(config.BENCH['rebote']['ok'],0)}",
-       estado=config.estado_bench("rebote", rebote))
+ui.kpi(c2, "Usuarios", num(tot_usr), f"{num(nuevos)} nuevos" if nuevos else "Únicos")
+ui.kpi(c3, "% Usuarios nuevos", pct(pct_nuevos), "Nuevos / totales")
+ui.kpi(c4, "Páginas / sesión", f"{pags_ses:.2f}".replace(".", ","), "Profundidad de visita")
+
+st.subheader("Engagement y conversión")
+c5, c6, c7, c8 = st.columns(4)
+ui.kpi(c5, "Tasa de engagement", pct(engagement), "Sesiones con interacción",
+       estado=config.estado_bench("rebote", 1 - engagement))
+ui.kpi(c6, "Duración media sesión", dur_fmt, "Por sesión")
+ui.kpi(c7, "Conversiones", num(conversiones), "Eventos clave (key events)",
+       estado="ok" if conversiones > 0 else "off")
+ui.kpi(c8, "Tasa de conversión", pct(tasa_conv, 2), "Conversiones / sesiones")
 
 # --- Observaciones ---------------------------------------------------------- #
 por_prog = df.groupby("programa", as_index=False).agg(

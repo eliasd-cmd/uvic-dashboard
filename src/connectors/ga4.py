@@ -169,6 +169,54 @@ def _obtener_agrupado(dias, dims, nombre_cache, fn_sample):
     return ResultadoConector(fn_sample(dias), "sample", "Datos de ejemplo")
 
 
+def obtener_resumen(dias: int = 30) -> ResultadoConector:
+    """Totales exactos del periodo (sin dimensión fecha) para las 5 landings:
+    sesiones, usuarios, usuarios_nuevos, vistas, engagement, duración, eventos clave."""
+    creds = _leer_secreto("ga4")
+    if creds and (creds.get("service_account") or creds.get("service_account_file")):
+        try:
+            df = _resumen(creds, dias)
+            if df is not None and not df.empty:
+                guardar_cache(df, "ga4_resumen")
+                return ResultadoConector(df, "api", "GA4 Data API")
+        except Exception as e:  # noqa: BLE001
+            cache = leer_cache("ga4_resumen")
+            if cache is not None:
+                return ResultadoConector(cache, "cache", f"API falló ({e}); caché")
+    cache = leer_cache("ga4_resumen")
+    if cache is not None and not cache.empty:
+        return ResultadoConector(cache, "cache", "Caché local")
+    return ResultadoConector(sample_data.ga4_resumen(dias), "sample", "Datos de ejemplo")
+
+
+def _resumen(creds: dict, dias: int) -> pd.DataFrame:
+    from google.analytics.data_v1beta.types import (  # type: ignore
+        DateRange, Metric, RunReportRequest,
+    )
+    client, property_id, filtro = _cliente(creds)
+    mets = ["sessions", "totalUsers", "newUsers", "screenPageViews",
+            "engagementRate", "averageSessionDuration", "keyEvents"]
+    request = RunReportRequest(
+        property=property_id,
+        metrics=[Metric(name=m) for m in mets],
+        date_ranges=[DateRange(start_date=f"{dias}daysAgo", end_date="today")],
+        dimension_filter=filtro,
+    )
+    resp = client.run_report(request)
+    if not resp.rows:
+        return pd.DataFrame()
+    m = resp.rows[0].metric_values
+    return pd.DataFrame([dict(
+        sesiones=int(m[0].value or 0),
+        usuarios=int(m[1].value or 0),
+        usuarios_nuevos=int(m[2].value or 0),
+        vistas=int(float(m[3].value or 0)),
+        engagement=round(float(m[4].value or 0), 4),
+        duracion_media=round(float(m[5].value or 0), 0),
+        eventos_clave=int(float(m[6].value or 0)),
+    )])
+
+
 def obtener_fuente(dias: int = 30) -> ResultadoConector:
     return _obtener_agrupado(
         dias, [("sessionSource", "fuente"), ("sessionMedium", "medio")],
