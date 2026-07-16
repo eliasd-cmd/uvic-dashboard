@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from src.data import loader
+from src.data import loader, metrics
 from src.ui import components as ui
 from src.ui.theme import aplicar_tema, badge_origen, eur, num, pct
 
@@ -100,6 +100,15 @@ st.dataframe(
         "n_negocios": st.column_config.NumberColumn("Nº negocios", format="%d"),
     },
 )
+
+# --- Embudo Pipeline UVIC de estos leads -------------------------------------- #
+if not ni.empty:
+    st.subheader("Embudo Pipeline UVIC")
+    st.caption(
+        "Solo negocios de leads importados/webinar. "
+        "Oportunidad → Entrevista → Envío inscripción → Cierre ganado (= matrícula)."
+    )
+    ui.embudo_chart(metrics.embudo(ni))
 
 # --- Tabla de negocios ------------------------------------------------------- #
 if not ni.empty:
