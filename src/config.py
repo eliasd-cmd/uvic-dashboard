@@ -290,4 +290,8 @@ COLOR_PLATAFORMA = {
     "Meta Ads": TEMA.color_meta,
     "Google Analytics": TEMA.color_ga4,
     "HubSpot": TEMA.color_hubspot,
+    # Fuentes UTM de los leads (mismos colores de identidad que la plataforma).
+    "Google": TEMA.color_google,
+    "Meta": TEMA.color_meta,
+    "Sin UTM": TEMA.gris_uvic,
 }
