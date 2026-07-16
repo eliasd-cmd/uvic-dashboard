@@ -21,6 +21,7 @@ class DatosDashboard:
     leads: pd.DataFrame
     deals: pd.DataFrame
     origenes: dict  # {"Google Ads": "sample", ...}
+    detalles: dict = field(default_factory=dict)  # motivo/origen por fuente
     leads_import: pd.DataFrame = field(default_factory=pd.DataFrame)
     negocios_import: pd.DataFrame = field(default_factory=pd.DataFrame)
     origen_import: str = "sample"
@@ -41,13 +42,13 @@ class DatosDashboard:
 @st.cache_data(ttl=config.CACHE_TTL_ADS, show_spinner="Cargando Google Ads…")
 def _cargar_google(dias: int):
     r = google_ads.obtener(dias)
-    return r.df, r.origen
+    return r.df, r.origen, r.detalle
 
 
 @st.cache_data(ttl=config.CACHE_TTL_ADS, show_spinner="Cargando Meta Ads…")
 def _cargar_meta(dias: int):
     r = meta_ads.obtener(dias)
-    return r.df, r.origen
+    return r.df, r.origen, r.detalle
 
 
 @st.cache_data(ttl=config.CACHE_TTL_GA4, show_spinner="Cargando GA4…")
@@ -55,14 +56,14 @@ def _cargar_ga4(dias: int):
     r = ga4.obtener(dias)
     rf = ga4.obtener_fuente(dias)
     rc = ga4.obtener_campana(dias)
-    return r.df, r.origen, rf.df, rc.df
+    return r.df, r.origen, r.detalle, rf.df, rc.df
 
 
 @st.cache_data(ttl=config.CACHE_TTL_HUBSPOT, show_spinner="Cargando HubSpot…")
 def _cargar_hubspot(dias: int):
     leads = hubspot.obtener(dias)
     deals = hubspot.obtener_deals(dias)
-    return leads.df, leads.origen, deals.df
+    return leads.df, leads.origen, leads.detalle, deals.df
 
 
 @st.cache_data(ttl=config.CACHE_TTL_HUBSPOT, show_spinner="Cargando leads importados…")
@@ -72,10 +73,10 @@ def _cargar_importados():
 
 
 def cargar_todo(dias: int = 30) -> DatosDashboard:
-    g_df, g_o = _cargar_google(dias)
-    m_df, m_o = _cargar_meta(dias)
-    a_df, a_o, af_df, ac_df = _cargar_ga4(dias)
-    l_df, l_o, d_df = _cargar_hubspot(dias)
+    g_df, g_o, g_d = _cargar_google(dias)
+    m_df, m_o, m_d = _cargar_meta(dias)
+    a_df, a_o, a_d, af_df, ac_df = _cargar_ga4(dias)
+    l_df, l_o, l_d, d_df = _cargar_hubspot(dias)
     li_df, ni_df, oi = _cargar_importados()
     return DatosDashboard(
         google=g_df, meta=m_df, ga4=a_df, leads=l_df, deals=d_df,
@@ -84,6 +85,12 @@ def cargar_todo(dias: int = 30) -> DatosDashboard:
             "Meta Ads": m_o,
             "Google Analytics": a_o,
             "HubSpot": l_o,
+        },
+        detalles={
+            "Google Ads": g_d,
+            "Meta Ads": m_d,
+            "Google Analytics": a_d,
+            "HubSpot": l_d,
         },
         leads_import=li_df, negocios_import=ni_df, origen_import=oi,
         ga4_fuente=af_df, ga4_campana=ac_df,

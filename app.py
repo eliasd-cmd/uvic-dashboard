@@ -26,7 +26,7 @@ aplicar_tema()
 # --------------------------------------------------------------------------- #
 dias = ui.selector_periodo(30)
 datos = loader.cargar_todo(dias)
-ui.aviso_origenes(datos.origenes)
+ui.aviso_origenes(datos.origenes, datos.detalles)
 
 k = metrics.kpis_globales(datos.ads, datos.leads, datos.deals)
 ins = insights.generar(datos)

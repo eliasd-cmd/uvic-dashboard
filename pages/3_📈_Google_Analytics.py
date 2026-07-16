@@ -13,7 +13,7 @@ aplicar_tema()
 
 dias = ui.selector_periodo(30)
 datos = loader.cargar_todo(dias)
-ui.aviso_origenes(datos.origenes)
+ui.aviso_origenes(datos.origenes, datos.detalles)
 
 ui.cabecera("Google Analytics 4",
             f"Tráfico de las 5 landings WeRise · últimos {dias} días")

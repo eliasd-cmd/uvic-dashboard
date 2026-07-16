@@ -32,8 +32,9 @@ def selector_periodo(default: int = 30) -> int:
     return opciones[etiqueta]
 
 
-def aviso_origenes(origenes: dict) -> None:
-    """Muestra en el sidebar de qué fuente vienen los datos de cada plataforma."""
+def aviso_origenes(origenes: dict, detalles: dict | None = None) -> None:
+    """Muestra en el sidebar de qué fuente vienen los datos de cada plataforma.
+    Si una fuente NO está en vivo y hay un motivo (ej. error de API), lo enseña."""
     from src import config
 
     st.sidebar.markdown("**Origen de los datos**")
@@ -41,6 +42,10 @@ def aviso_origenes(origenes: dict) -> None:
         st.sidebar.markdown(
             f"{plataforma}: {badge_origen(origen)}", unsafe_allow_html=True
         )
+        if detalles and origen != "api":
+            d = str(detalles.get(plataforma) or "")
+            if d and d not in ("Caché local", "Datos de ejemplo"):
+                st.sidebar.caption(f"↳ {d[:220]}")
     if st.sidebar.button("🔄 Actualizar ahora", width='stretch'):
         st.cache_data.clear()
         st.rerun()

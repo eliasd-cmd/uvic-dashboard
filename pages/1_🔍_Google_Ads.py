@@ -13,7 +13,7 @@ aplicar_tema()
 
 dias = ui.selector_periodo(30)
 datos = loader.cargar_todo(dias)
-ui.aviso_origenes(datos.origenes)
+ui.aviso_origenes(datos.origenes, datos.detalles)
 
 ui.cabecera("Google Ads", f"Cuenta {config.GOOGLE_ADS_CUSTOMER_ID} · búsqueda WeRise · últimos {dias} días")
 
