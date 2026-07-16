@@ -100,16 +100,6 @@ st.caption(
 st.divider()
 
 # --------------------------------------------------------------------------- #
-# Insights y recomendaciones (skill: what worked / needs improvement / recos)
-# --------------------------------------------------------------------------- #
-st.subheader("Insights del periodo")
-ui.caja_insights(ins["wins"], ins["concerns"])
-with st.expander("💡 Recomendaciones priorizadas (impacto × esfuerzo)", expanded=True):
-    ui.tabla_recomendaciones(ins["recos"])
-
-st.divider()
-
-# --------------------------------------------------------------------------- #
 # Gráficos principales
 # --------------------------------------------------------------------------- #
 col_izq, col_der = st.columns([0.58, 0.42])
@@ -163,3 +153,14 @@ if not cruce.empty:
         "**Inversión (G+M)** = Google Ads + Meta del programa. **CPL** = inversión / leads "
         "(`uvic_curso`) del programa. La campaña exacta no se aísla (atribución OFFLINE)."
     )
+
+st.divider()
+
+# --------------------------------------------------------------------------- #
+# Insights y recomendaciones (skill: what worked / needs improvement / recos)
+# — siempre al final, después de todos los gráficos.
+# --------------------------------------------------------------------------- #
+st.subheader("Insights del periodo")
+ui.caja_insights(ins["wins"], ins["concerns"])
+with st.expander("💡 Recomendaciones priorizadas (impacto × esfuerzo)", expanded=True):
+    ui.tabla_recomendaciones(ins["recos"])

@@ -41,19 +41,7 @@ ui.kpi(c4, "Con programa", pct(con_programa/total if total else 0),
        "Leads con uvic_curso",
        estado="ok" if total and con_programa/total >= 0.9 else "warn")
 
-# --- Observaciones ---------------------------------------------------------- #
 cruce = metrics.cruce_inversion_leads(datos.ads, leads, deals)
-wins, concerns = [], []
-con_leads = cruce[cruce["leads"] > 0] if not cruce.empty else cruce
-if not con_leads.empty:
-    mejor = con_leads.sort_values("cpl").iloc[0]
-    wins.append(f"Programa más eficiente: **{mejor['programa']}** (CPL {eur(mejor['cpl'],2)}).")
-    peor = con_leads.sort_values("cpl").iloc[-1]
-    if len(con_leads) > 1 and peor["cpl"] > mejor["cpl"] * 1.5:
-        concerns.append(f"CPL más caro: **{peor['programa']}** ({eur(peor['cpl'],2)}).")
-if total and con_programa / total < 0.95:
-    concerns.append(f"Solo el {pct(con_programa/total)} de leads tiene `uvic_curso`: mejora el etiquetado para medir bien el CPL.")
-ui.caja_insights(wins, concerns)
 
 st.divider()
 
@@ -153,3 +141,19 @@ st.caption(
     "(`uvic_curso`), que cubre el 100%. Elevar el % de leads con UTM es la palanca para medir CPL "
     "por campaña de forma completa."
 )
+
+st.divider()
+
+# --- Insights del periodo (siempre al final, tras los gráficos) --------------- #
+st.subheader("Insights del periodo")
+wins, concerns = [], []
+con_leads = cruce[cruce["leads"] > 0] if not cruce.empty else cruce
+if not con_leads.empty:
+    mejor = con_leads.sort_values("cpl").iloc[0]
+    wins.append(f"Programa más eficiente: **{mejor['programa']}** (CPL {eur(mejor['cpl'],2)}).")
+    peor = con_leads.sort_values("cpl").iloc[-1]
+    if len(con_leads) > 1 and peor["cpl"] > mejor["cpl"] * 1.5:
+        concerns.append(f"CPL más caro: **{peor['programa']}** ({eur(peor['cpl'],2)}).")
+if total and con_programa / total < 0.95:
+    concerns.append(f"Solo el {pct(con_programa/total)} de leads tiene `uvic_curso`: mejora el etiquetado para medir bien el CPL.")
+ui.caja_insights(wins, concerns)

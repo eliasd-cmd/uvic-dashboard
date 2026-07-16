@@ -61,17 +61,8 @@ ui.kpi(c7, "Conversiones", num(conversiones), "Eventos clave (key events)",
        estado="ok" if conversiones > 0 else "off")
 ui.kpi(c8, "Tasa de conversión", pct(tasa_conv, 2), "Conversiones / sesiones")
 
-# --- Observaciones ---------------------------------------------------------- #
 por_prog = df.groupby("programa", as_index=False).agg(
     sesiones=("sesiones", "sum"), rebote=("rebote", "mean"))
-wins, concerns = [], []
-if not por_prog.empty:
-    top = por_prog.sort_values("sesiones", ascending=False).iloc[0]
-    wins.append(f"Landing con más tráfico: **{top['programa']}** ({num(int(top['sesiones']))} sesiones).")
-    peor = por_prog.sort_values("rebote", ascending=False).iloc[0]
-    if config.estado_bench("rebote", peor["rebote"]) == "off":
-        concerns.append(f"Rebote alto en **{peor['programa']}** ({pct(peor['rebote'])}): revisa coherencia anuncio→landing, velocidad y CTA.")
-ui.caja_insights(wins, concerns)
 
 st.divider()
 
@@ -201,3 +192,16 @@ else:
             avisos.append(f"**{c}** no registra nada en: {', '.join(rotas)}.")
     if avisos:
         st.warning("⚠️ " + " · ".join(avisos) + " Revisa el tag en esa(s) landing(s).")
+
+st.divider()
+
+# --- Insights del periodo (siempre al final, tras los gráficos) --------------- #
+st.subheader("Insights del periodo")
+wins, concerns = [], []
+if not por_prog.empty:
+    top = por_prog.sort_values("sesiones", ascending=False).iloc[0]
+    wins.append(f"Landing con más tráfico: **{top['programa']}** ({num(int(top['sesiones']))} sesiones).")
+    peor = por_prog.sort_values("rebote", ascending=False).iloc[0]
+    if config.estado_bench("rebote", peor["rebote"]) == "off":
+        concerns.append(f"Rebote alto en **{peor['programa']}** ({pct(peor['rebote'])}): revisa coherencia anuncio→landing, velocidad y CTA.")
+ui.caja_insights(wins, concerns)

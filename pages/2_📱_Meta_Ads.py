@@ -107,17 +107,7 @@ ui.tabla_totales(
     },
 )
 
-# --- Observaciones automáticas ---------------------------------------------- #
 camp = metrics.resumen_campana(df)
-wins, concerns = [], []
-if not camp.empty:
-    mejor = camp.sort_values("ctr", ascending=False).iloc[0]
-    wins.append(f"Mejor CTR: **{mejor['programa']}** ({pct(mejor['ctr'],2)}, CPC {eur(mejor['cpc'],2)}).")
-    caro = camp.sort_values("cpc", ascending=False).iloc[0]
-    if config.estado_bench("cpc_social", caro["cpc"]) == "off":
-        concerns.append(f"CPC social alto en **{caro['programa']}** ({eur(caro['cpc'],2)}): posible fatiga de creatividad.")
-        concerns.append("Refresca creatividades cada 2 semanas para frenar la fatiga (CPM al alza).")
-ui.caja_insights(wins, concerns)
 
 st.divider()
 
@@ -161,3 +151,17 @@ st.caption(
     "**Resultados Meta** = leads web atribuidos por la plataforma · **CPL Meta** = inversión / "
     "resultados Meta · **Leads HubSpot** = leads reales con `uvic_utm_campaign` de esa campaña."
 )
+
+st.divider()
+
+# --- Insights del periodo (siempre al final, tras los gráficos) --------------- #
+st.subheader("Insights del periodo")
+wins, concerns = [], []
+if not camp.empty:
+    mejor = camp.sort_values("ctr", ascending=False).iloc[0]
+    wins.append(f"Mejor CTR: **{mejor['programa']}** ({pct(mejor['ctr'],2)}, CPC {eur(mejor['cpc'],2)}).")
+    caro = camp.sort_values("cpc", ascending=False).iloc[0]
+    if config.estado_bench("cpc_social", caro["cpc"]) == "off":
+        concerns.append(f"CPC social alto en **{caro['programa']}** ({eur(caro['cpc'],2)}): posible fatiga de creatividad.")
+        concerns.append("Refresca creatividades cada 2 semanas para frenar la fatiga (CPM al alza).")
+ui.caja_insights(wins, concerns)

@@ -103,21 +103,7 @@ ui.tabla_totales(
     },
 )
 
-# --- Observaciones automáticas ---------------------------------------------- #
 camp = metrics.resumen_campana(df)
-wins, concerns = [], []
-if r["conversiones"] <= 1:
-    concerns.append(
-        f"**{int(r['conversiones'])} conversiones** registradas pese a {eur(r['coste'])} de gasto: "
-        "el tracking no atribuye. Los leads reales están en HubSpot (página *Leads*)."
-    )
-if not camp.empty:
-    mejor = camp.sort_values("ctr", ascending=False).iloc[0]
-    wins.append(f"Mejor CTR: **{mejor['programa']}** ({pct(mejor['ctr'],2)}, CPC {eur(mejor['cpc'],2)}).")
-    caro = camp.sort_values("cpc", ascending=False).iloc[0]
-    if config.estado_bench("cpc_search", caro["cpc"]) == "off":
-        concerns.append(f"CPC alto en **{caro['programa']}** ({eur(caro['cpc'],2)}): revisa puja y Quality Score.")
-ui.caja_insights(wins, concerns)
 
 st.divider()
 
@@ -164,3 +150,21 @@ st.caption(
     "Las 5 campañas `WeRise_Search_NAC_` traen el grueso de leads cualificados. "
     "El CPL real por programa está en la página *Leads (HubSpot)*."
 )
+
+st.divider()
+
+# --- Insights del periodo (siempre al final, tras los gráficos) --------------- #
+st.subheader("Insights del periodo")
+wins, concerns = [], []
+if r["conversiones"] <= 1:
+    concerns.append(
+        f"**{int(r['conversiones'])} conversiones** registradas pese a {eur(r['coste'])} de gasto: "
+        "el tracking no atribuye. Los leads reales están en HubSpot (página *Leads*)."
+    )
+if not camp.empty:
+    mejor = camp.sort_values("ctr", ascending=False).iloc[0]
+    wins.append(f"Mejor CTR: **{mejor['programa']}** ({pct(mejor['ctr'],2)}, CPC {eur(mejor['cpc'],2)}).")
+    caro = camp.sort_values("cpc", ascending=False).iloc[0]
+    if config.estado_bench("cpc_search", caro["cpc"]) == "off":
+        concerns.append(f"CPC alto en **{caro['programa']}** ({eur(caro['cpc'],2)}): revisa puja y Quality Score.")
+ui.caja_insights(wins, concerns)
