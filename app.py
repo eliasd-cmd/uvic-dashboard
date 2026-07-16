@@ -159,22 +159,22 @@ with col_t2:
     else:
         st.info("Sin leads en el período.")
 
-# --- Gráficos diarios: conversiones y leads ---------------------------------- #
+# --- Gráficos diarios: conversiones y leads (totales) ------------------------ #
 col_g1, col_g2 = st.columns(2)
 with col_g1:
     st.subheader("Conversiones diarias")
     if not datos.ads.empty:
-        serie_conv = datos.ads.groupby(["fecha", "plataforma"], as_index=False)["conversiones"].sum()
+        serie_conv = datos.ads.groupby("fecha", as_index=False)["conversiones"].sum()
         ui.linea_temporal(serie_conv, x="fecha", y="conversiones",
-                          color="plataforma", titulo="", y_label="Conversiones/día")
+                          color=None, titulo="", y_label="Conversiones/día")
 with col_g2:
     st.subheader("Leads diarios")
     if not datos.leads.empty:
-        serie_leads = (datos.leads.groupby(["fecha_creacion", "fuente"], as_index=False)
+        serie_leads = (datos.leads.groupby("fecha_creacion", as_index=False)
                        .agg(leads=("lead_id", "count"))
                        .rename(columns={"fecha_creacion": "fecha"}))
         ui.linea_temporal(serie_leads, x="fecha", y="leads",
-                          color="fuente", titulo="", y_label="Leads/día")
+                          color=None, titulo="", y_label="Leads/día")
 
 col_a, col_b = st.columns(2)
 with col_a:
