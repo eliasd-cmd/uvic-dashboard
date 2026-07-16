@@ -41,11 +41,7 @@ t_deals = metrics.tendencia(serie_deals, "deals", "fecha") if serie_deals is not
 # --------------------------------------------------------------------------- #
 # Cabecera + resumen ejecutivo
 # --------------------------------------------------------------------------- #
-ui.cabecera(
-    "Resumen Global",
-    f"{etiqueta} · Objetivo Etapa 1: {config.OBJETIVO_MATRICULAS} matrículas "
-    f"con ~{eur(config.OBJETIVO_INVERSION_MENSUAL)}/mes",
-)
+ui.cabecera("Resumen Global", etiqueta)
 
 _headline = ins["concerns"][0] if ins["concerns"] else ins["wins"][0]
 st.info(
