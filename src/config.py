@@ -168,6 +168,13 @@ def es_campana_werise(nombre_campana: str) -> bool:
     return programa_por_campana(nombre_campana) not in ("Otras / Branding", "Sin asignar")
 
 
+def es_webinar(utm_campaign: str) -> bool:
+    """True si el lead viene de un webinar (uvic_utm_campaign contiene 'webinar':
+    p.ej. 'WebInar', 'WEBINAR EMBA - IA ABRIL'). Estos leads NO son de la captación
+    de las campañas WeRise y se gestionan en la hoja de Leads Importados."""
+    return "webinar" in (utm_campaign or "").lower()
+
+
 def plataforma_por_utm(source: str, medium: str) -> str:
     """Deriva la plataforma desde las UTM de HubSpot (uvic_utm_source/medium).
     Meta = ig/fb/facebook/meta; Google = google. Sin UTM si viene vacío."""

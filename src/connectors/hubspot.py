@@ -134,6 +134,10 @@ def _fetch_leads(creds: dict, dias: int) -> pd.DataFrame:
             # Segundo filtro (por si el server-side no lo cazó): descartar importados.
             if p.get("hs_object_source") == "IMPORT" or p.get("hs_analytics_source_data_1") == "IMPORT":
                 continue
+            # Descartar leads de webinar (uvic_utm_campaign ~ 'webinar'): no son de
+            # la captación WeRise; se gestionan en la hoja de Leads Importados.
+            if config.es_webinar(p.get("uvic_utm_campaign")):
+                continue
             curso = p.get("uvic_curso") or ""
             estado = MAPA_LIFECYCLE.get((p.get("lifecyclestage") or "").lower(), "Lead")
             utm_source = p.get("uvic_utm_source") or ""
@@ -185,10 +189,14 @@ def _fetch_deals(creds: dict, dias: int) -> pd.DataFrame:
 
     # Mapa deal -> programa vía contacto asociado (best-effort).
     deal_ids = [d["id"] for d in deals]
-    prog_por_deal = _programa_por_deal(token, deal_ids) if deal_ids else {}
+    info_por_deal = _programa_por_deal(token, deal_ids) if deal_ids else {}
+    prog_por_deal = {k: v["programa"] for k, v in info_por_deal.items()}
 
     filas = []
     for d in deals:
+        # Excluir deals de leads de webinar (van a la hoja de Leads Importados).
+        if info_por_deal.get(d.get("id"), {}).get("webinar"):
+            continue
         p = d.get("properties", {})
         etapa_id = p.get("dealstage") or ""
         filas.append(dict(
@@ -204,7 +212,8 @@ def _fetch_deals(creds: dict, dias: int) -> pd.DataFrame:
 
 
 def _programa_por_deal(token: str, deal_ids: list[str]) -> dict:
-    """Asocia cada deal a un programa leyendo el uvic_curso del contacto asociado."""
+    """Asocia cada deal a su contacto y devuelve {deal_id: {programa, webinar}}
+    leyendo uvic_curso y uvic_utm_campaign del contacto asociado."""
     import requests
 
     # 1) deal -> contacto (associations v4 batch)
@@ -229,30 +238,36 @@ def _programa_por_deal(token: str, deal_ids: list[str]) -> dict:
     if not contact_ids:
         return {}
 
-    # 2) contacto -> uvic_curso (batch read)
+    # 2) contacto -> uvic_curso + uvic_utm_campaign (batch read)
     try:
         r = requests.post(
             f"{API}/crm/v3/objects/contacts/batch/read",
             headers=_headers(token),
-            json={"properties": ["uvic_curso"],
+            json={"properties": ["uvic_curso", "uvic_utm_campaign"],
                   "inputs": [{"id": c} for c in contact_ids]}, timeout=60)
         r.raise_for_status()
-        curso_por_contacto = {
-            str(c["id"]): (c.get("properties", {}).get("uvic_curso") or "")
+        props_por_contacto = {
+            str(c["id"]): c.get("properties", {})
             for c in r.json().get("results", [])
         }
     except Exception:  # noqa: BLE001
         return {}
 
-    return {
-        did: config.programa_por_curso(curso_por_contacto.get(cid, ""))
-        for did, cid in deal_to_contact.items()
-    }
+    out = {}
+    for did, cid in deal_to_contact.items():
+        p = props_por_contacto.get(cid, {})
+        out[did] = dict(
+            programa=config.programa_por_curso(p.get("uvic_curso") or ""),
+            webinar=config.es_webinar(p.get("uvic_utm_campaign")),
+        )
+    return out
 
 
 # --------------------------------------------------------------------------- #
-# Leads IMPORTADOS (control aparte) — contactos uvic_curso con fuente = IMPORT.
-# No llevan filtro de fecha: se listan TODOS, y los nuevos IMPORT caen aquí solos.
+# Leads IMPORTADOS / WEBINAR (control aparte) — contactos uvic_curso con
+# fuente = IMPORT o con uvic_utm_campaign de webinar. Sin filtro de fecha:
+# se listan TODOS, y los nuevos que cumplan cualquiera de los dos criterios
+# caen aquí solos (y quedan fuera del resto del dashboard).
 # --------------------------------------------------------------------------- #
 def importados():
     """Devuelve (leads_import_df, negocios_import_df, origen)."""
@@ -298,14 +313,20 @@ def _fetch_importados(creds: dict):
     mapa = _mapa_etapas_deals(token)
 
     payload = {
-        "filterGroups": [{
-            "filters": [
+        # Dos grupos = OR: importados clásicos O leads de webinar (por UTM campaign).
+        "filterGroups": [
+            {"filters": [
                 {"propertyName": "uvic_curso", "operator": "HAS_PROPERTY"},
                 {"propertyName": "hs_object_source", "operator": "EQ", "value": "IMPORT"},
-            ]
-        }],
+            ]},
+            {"filters": [
+                {"propertyName": "uvic_curso", "operator": "HAS_PROPERTY"},
+                {"propertyName": "uvic_utm_campaign", "operator": "CONTAINS_TOKEN", "value": "webinar"},
+            ]},
+        ],
         "properties": ["uvic_curso", "uvic_nivel_estudios", "createdate", "lifecyclestage",
-                       "hs_lead_status", "firstname", "lastname", "email", "num_associated_deals"],
+                       "hs_lead_status", "firstname", "lastname", "email", "num_associated_deals",
+                       "uvic_utm_campaign", "hs_object_source"],
         "limit": 100,
     }
     contactos, after = [], None
@@ -335,6 +356,9 @@ def _fetch_importados(creds: dict):
             estado=MAPA_LIFECYCLE.get((p.get("lifecyclestage") or "").lower(), "Lead"),
             lead_status=p.get("hs_lead_status") or "",
             n_negocios=int(p.get("num_associated_deals") or 0),
+            campana=p.get("uvic_utm_campaign") or "",
+            motivo=("Webinar" if config.es_webinar(p.get("uvic_utm_campaign"))
+                    else "Importado"),
         ))
     leads = pd.DataFrame(filas)
 
