@@ -64,6 +64,8 @@ def num(x: float, dec: int = 0) -> str:
 
 
 def badge_origen(origen: str) -> str:
-    etiqueta = {"api": "En vivo (API)", "cache": "Caché", "sample": "Ejemplo"}.get(origen, origen)
-    clase = {"api": "badge-ok", "cache": "badge-warn", "sample": "badge-off"}.get(origen, "badge-off")
+    etiqueta = {"api": "En vivo (API)", "cache": "Caché", "sample": "Ejemplo",
+                "excel": "Excel local"}.get(origen, origen)
+    clase = {"api": "badge-ok", "cache": "badge-warn", "sample": "badge-off",
+             "excel": "badge-warn"}.get(origen, "badge-off")
     return f'<span class="badge {clase}">{etiqueta}</span>'

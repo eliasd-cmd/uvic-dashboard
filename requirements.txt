@@ -11,3 +11,7 @@ google-ads>=25.0            # Google Ads API
 google-analytics-data>=0.18 # GA4 Data API
 google-auth>=2.29           # Service Account para GA4
 # HubSpot y Meta usan REST directo vía `requests` (no requieren SDK)
+
+# Planificación (Google Sheet en vivo)
+gspread>=6.0
+openpyxl>=3.1

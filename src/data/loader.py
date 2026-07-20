@@ -10,7 +10,7 @@ import pandas as pd
 import streamlit as st
 
 from src import config
-from src.connectors import ga4, google_ads, hubspot, meta_ads
+from src.connectors import ga4, google_ads, hubspot, meta_ads, plan
 
 
 @dataclass
@@ -74,6 +74,13 @@ def _cargar_hubspot(desde, hasta):
 def _cargar_importados():
     leads_i, negocios_i, origen_i = hubspot.importados()
     return leads_i, negocios_i, origen_i
+
+
+@st.cache_data(ttl=config.CACHE_TTL_HUBSPOT, show_spinner="Cargando planificación…")
+def cargar_plan():
+    """Planificación trimestral (Google Sheet en vivo). Devuelve
+    (estructura {pestaña: [bloques]}, origen, detalle)."""
+    return plan.obtener_plan()
 
 
 def cargar_todo(desde, hasta) -> DatosDashboard:
