@@ -124,6 +124,45 @@ def _desde_excel_local() -> dict:
     return out
 
 
+def _a_float(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def valores_mes(bloque: dict, mes: str) -> dict:
+    """Devuelve {metrica_en_minúsculas: valor_float} de un bloque para un mes
+    concreto (p.ej. 'julio'). Ignora valores no numéricos."""
+    if not bloque or mes not in bloque.get("meses", []):
+        return {}
+    idx = bloque["meses"].index(mes)
+    out = {}
+    for label, valores in bloque["metricas"].items():
+        if idx < len(valores):
+            v = _a_float(valores[idx])
+            if v is not None:
+                out[label.strip().lower()] = v
+    return out
+
+
+def plan_total_mes(data: dict, mes: str) -> dict:
+    """Atajo: valores del bloque TOTAL para el mes dado. Devuelve dict con las
+    claves esperadas normalizadas: inversion, leads, cpl, matriculas."""
+    bloques = (data or {}).get("TOTAL", [])
+    if not bloques:
+        return {}
+    m = valores_mes(bloques[0], mes)
+    return dict(
+        inversion=m.get("mkt presu."),
+        leads=m.get("leads"),
+        cpl=m.get("cpl"),
+        matriculas=m.get("ventas netas totales"),
+        facturacion=m.get("facturación neta"),
+        tasa=m.get("tasa de conversión"),
+    )
+
+
 def obtener_plan():
     """Devuelve (estructura, origen, detalle).
 
