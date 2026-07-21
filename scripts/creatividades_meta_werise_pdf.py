@@ -71,10 +71,10 @@ story.append(P("UVic · WeRise", ParagraphStyle("k", parent=BODY, textColor=GRAN
                alignment=TA_CENTER, fontName="Helvetica-Bold", spaceAfter=2)))
 story.append(P("Propostes de creativitats · Meta Ads", ParagraphStyle("t", parent=H1, fontSize=23,
                alignment=TA_CENTER, spaceAfter=4, leading=26)))
-story.append(P("Copys nous per als 3 programes que corren amb un sol anunci",
+story.append(P("Copys nous per als 5 programes WeRise",
                ParagraphStyle("s", parent=BODY, fontSize=11.5, alignment=TA_CENTER, spaceAfter=9)))
 story.append(HRFlowable(width="40%", thickness=2, color=GRANATE, spaceAfter=9, hAlign="CENTER"))
-story.append(P("Comunicació Científica · Màrqueting Esportiu · Documental Social",
+story.append(P("Executive MBA · Màrqueting Esportiu · Comunicació Científica · Documental Social · Lideratge IA",
                ParagraphStyle("m", parent=SMALL, alignment=TA_CENTER)))
 story.append(Spacer(1, 0.5 * cm))
 
@@ -83,12 +83,28 @@ story.append(P("<b>Per què això.</b> L'anunci guanyador «Executive MBA v2» (
                "copy</b> que l'original (CPL 294 €): va guanyar per ser una <b>creativitat/imatge nova</b>, "
                "no pel text. Ho confirma el playbook Andromeda de Meta 2026: el que cal és <b>volum de "
                "creativitats fresques</b> amb àngles variats. Aquí tens copys nous (en català, com els "
-               "actuals) pensats per a la compradora principal: <b>dones 35-54</b>.", BODY))
+               "actuals) per als <b>5 programes</b>, pensats per a la compradora principal: <b>dones 35-54</b>.", BODY))
 story.append(P("<b>Especificacions Meta:</b> el text primari mostra ~125 car. visibles (posa el ganxo al "
                "principi); titular ≤ 40 car.; descripció ≤ 30 car. CTA recomanat: «Més informació».", SMALL))
 
 DATA = {
-    "1 · Postgrau Comunicació Científica": (
+    "1 · Executive MBA": (
+        "cloud.info-uvic.cat/master-executive-mba-uvic",
+        [
+            ("A — Carrera", "Fes el salt a la direcció. Un MBA amb 5 sessions de coaching executiu individual i decisions sobre reptes reals d'empresa des del primer dia.", "Impulsa la teva carrera directiva", 33, "MBA amb coaching executiu", 25),
+            ("B — Diferencial", "No és un MBA més: treballa el teu estil de lideratge amb 5 sessions de coaching executiu individual.", "Un MBA amb coaching inclòs", 26, "5 sessions individuals", 22),
+            ("C — Identitat", "Per a professionals amb experiència que volen liderar. Aplica el que aprens a la teva empresa des del primer dia.", "De professional a directiu/va", 29, "Aprèn i aplica ja", 17),
+            ("D — Estancament", "Portes anys al mateix lloc esperant el salt? Un Executive MBA amb coaching per liderar amb criteri i decidir sobre reptes reals.", "El salt professional que esperes", 32, "Executive MBA UVic", 18),
+        ],
+        "Tens experiència i saps que estàs preparat/da per a més, però el salt a la direcció no arriba? "
+        "L'Executive MBA de la UVic combina formació en gestió amb 5 sessions de coaching executiu "
+        "individual per treballar el teu estil de lideratge. Decideixes sobre reptes reals d'empresa i "
+        "apliques el que aprens des del primer dia. Un programa pensat per a professionals en actiu que "
+        "volen liderar. Sol·licita informació.",
+        "Un/a professional de 40-50 anys liderant una reunió en un entorn directiu, o escena de coaching "
+        "1:1, actitud segura, llum natural, aspecte no publicitari.",
+    ),
+    "2 · Postgrau Comunicació Científica": (
         "cloud.info-uvic.cat/Comunicacio-Cientifica",
         [
             ("A — Transformació", "Saps molt, però la teva feina no arriba al gran públic? Aprèn a explicar ciència en articles, vídeo, ràdio i xarxes — i desenvolupa el teu propi projecte de divulgació.", "Comunica ciència amb impacte", 28, "Aprèn fent el teu projecte", 26),
@@ -104,7 +120,7 @@ DATA = {
         "Una divulgadora (dona 35-50) gravant un vídeo/podcast amb el mòbil, estil selfie natiu, amb el "
         "ganxo com a text a sobre. Variant: text pla sobre fons de color amb la frase de dolor.",
     ),
-    "2 · Màster Gestió i Màrqueting Esportiu": (
+    "3 · Màster Gestió i Màrqueting Esportiu": (
         "cloud.info-uvic.cat/master-sport-management-uvic",
         [
             ("A — Vocació", "Converteix la teva passió per l'esport en professió. Aprèn màrqueting esportiu, patrocini i experiència del fan amb professionals de la indústria.", "Treballa a la indústria de l'esport", 35, "Màster UVic · 2026", 18),
@@ -119,7 +135,7 @@ DATA = {
         "Foto d'ambient d'estadi/afició o una professional amb acreditació en un esdeveniment esportiu, "
         "estil «behind the scenes» natiu.",
     ),
-    "3 · Postgrau Documental Social": (
+    "4 · Postgrau Documental Social": (
         "cloud.info-uvic.cat/Postgrau-Documental-Social",
         [
             ("A — Vocació", "Tens històries que mereixen ser explicades? Aprèn tot el procés del documental social — direcció, producció, guió i distribució — amb professionals premiats.", "Explica històries amb impacte", 29, "Postgrau UVic · 2026", 20),
@@ -133,6 +149,21 @@ DATA = {
         "Reserva la teva plaça per al 2026.",
         "Operador/a de càmera enfocant una persona real, look una mica gra/autèntic, amb la frase "
         "«explica històries que importen».",
+    ),
+    "5 · Plus Executive — Lidera en entorns d'IA": (
+        "cloud.info-uvic.cat/Lideratge-entorns-IA",
+        [
+            ("A — Outcome", "Passa de fer servir la IA de tant en tant a dissenyar sistemes amb criteri de negoci. Actualitza el teu lideratge en entorns d'IA.", "Lidera la transformació amb IA", 30, "Programa executiu · UVic", 24),
+            ("B — Urgència", "La IA ja no és opcional per liderar. Aprèn a integrar assistents, agents i automatitzacions amb criteri de negoci.", "El teu lideratge, ara amb IA", 28, "Places obertes 2026", 19),
+            ("C — Identitat", "Per a directius i comandaments que volen liderar amb IA, no quedar-se enrere. De l'ús puntual al disseny de sistemes.", "Actualitza el teu lideratge amb IA", 34, "Curs executiu breu", 18),
+            ("D — Contrari", "Fer servir ChatGPT no és liderar amb IA. Aprèn a dissenyar sistemes amb assistents, agents i automatitzacions amb visió de negoci.", "Més enllà de fer servir ChatGPT", 31, "Lideratge en entorns d'IA", 25),
+        ],
+        "Fas servir la IA de manera puntual però saps que liderar en aquest entorn demana molt més? El "
+        "programa Lidera en entorns d'Intel·ligència Artificial de la UVic t'ensenya a integrar assistents, "
+        "agents i automatitzacions amb criteri de negoci, i a passar de l'ús puntual al disseny de sistemes "
+        "amb IA. Un format executiu i pràctic per actualitzar el teu lideratge. Sol·licita informació per al 2026.",
+        "Un/a comandament (35-50) davant d'una pantalla amb panells d'IA o liderant un equip en una oficina "
+        "moderna, llum natural, aspecte autèntic no publicitari.",
     ),
 }
 

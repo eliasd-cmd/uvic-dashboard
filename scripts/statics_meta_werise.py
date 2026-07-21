@@ -136,12 +136,16 @@ def static(nombre, hook, programa, fondo=None):
 
 # fondo=None → degradado de marca. Cuando haya fotos IA, pasar fondo="ruta.png".
 JOBS = [
-    ("comunicacio_1.png", "Fes que la teva ciència s'entengui.", "Postgrau Comunicació Científica", None),
-    ("comunicacio_2.png", "Un bon estudi que ningú llegeix no canvia res.", "Postgrau Comunicació Científica", None),
+    ("mba_1.png", "Impulsa la teva carrera directiva.", "Executive MBA", None),
+    ("mba_2.png", "El salt a la direcció que esperes.", "Executive MBA", None),
     ("esportiu_1.png", "Del teu amor per l'esport, una carrera.", "Màster Gestió i Màrqueting Esportiu", None),
     ("esportiu_2.png", "Fes el salt a la indústria de l'esport.", "Màster Gestió i Màrqueting Esportiu", None),
+    ("comunicacio_1.png", "Fes que la teva ciència s'entengui.", "Postgrau Comunicació Científica", None),
+    ("comunicacio_2.png", "Un bon estudi que ningú llegeix no canvia res.", "Postgrau Comunicació Científica", None),
     ("documental_1.png", "Explica històries que importen.", "Postgrau Documental Social", None),
     ("documental_2.png", "Del guió a la pantalla.", "Postgrau Documental Social", None),
+    ("liderazgo_ia_1.png", "Lidera la transformació amb IA.", "Lidera en entorns d'IA", None),
+    ("liderazgo_ia_2.png", "Fer servir ChatGPT no és liderar amb IA.", "Lidera en entorns d'IA", None),
 ]
 
 if __name__ == "__main__":
