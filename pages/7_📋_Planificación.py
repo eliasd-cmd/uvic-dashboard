@@ -58,6 +58,19 @@ def _estado_meta(real: float, objetivo: float, mas_es_mejor: bool = True) -> str
     return "ok" if ratio <= 1.0 else ("warn" if ratio <= 1.2 else "off")
 
 
+def _fila_pacing(nombre: str, real: float, plan, fmt, fraccion: float) -> dict:
+    """Fila de la tabla de proyección: real a hoy, objetivo a hoy, plan mes,
+    proyección a fin de mes (real ÷ % transcurrido) y % del plan proyectado."""
+    if plan is None:
+        return {"Métrica": nombre, "Real a hoy": fmt(real), "Objetivo a hoy": "—",
+                "Plan del mes": "—", "Proyección fin de mes": "—", "% del plan (proy.)": "—"}
+    proy = real / fraccion if fraccion else 0
+    return {"Métrica": nombre, "Real a hoy": fmt(real),
+            "Objetivo a hoy": fmt(plan * fraccion), "Plan del mes": fmt(plan),
+            "Proyección fin de mes": fmt(proy),
+            "% del plan (proy.)": pct(proy / plan) if plan else "—"}
+
+
 st.subheader("Real vs Plan")
 hoy = date.today()
 mes_actual = {7: "Julio", 8: "Agosto", 9: "Septiembre"}.get(hoy.month, "Julio")
@@ -132,27 +145,45 @@ for col, c in zip(cols, comparables):
 
 # --- Tabla de proyección a fin de mes (la "tendencia") ---------------------- #
 if fraccion > 0:
-    filas = []
-    for c in comparables:
-        if c["plan"] is None or not c["acum"]:
-            continue
-        proy = c["real"] / fraccion if fraccion else 0
-        cumpl_proy = proy / c["plan"] if c["plan"] else 0
-        filas.append({
-            "Métrica": c["titulo"],
-            "Real a hoy": c["fmt"](c["real"]),
-            "Objetivo a hoy": c["fmt"](c["plan"] * fraccion),
-            "Plan del mes": c["fmt"](c["plan"]),
-            "Proyección fin de mes": c["fmt"](proy),
-            "% del plan (proy.)": pct(cumpl_proy),
-        })
-    if filas:
-        st.markdown("**Proyección a fin de mes** (tendencia al ritmo actual)")
-        st.dataframe(pd.DataFrame(filas), hide_index=True, width="stretch")
-        st.caption(
-            "**Objetivo a hoy** = plan del mes × % transcurrido. **Proyección** = real ÷ % "
-            "transcurrido (dónde cerraría el mes si el ritmo se mantiene)."
-        )
+    filas = [_fila_pacing(c["titulo"], c["real"], c["plan"], c["fmt"], fraccion)
+             for c in comparables if c["acum"]]
+    st.markdown("**Proyección a fin de mes** (tendencia al ritmo actual)")
+    st.dataframe(pd.DataFrame(filas), hide_index=True, width="stretch")
+    st.caption(
+        "**Objetivo a hoy** = plan del mes × % transcurrido. **Proyección** = real ÷ % "
+        "transcurrido (dónde cerraría el mes si el ritmo se mantiene)."
+    )
+
+    # ----------------------------------------------------------------------- #
+    # Real vs Plan POR PLATAFORMA (Meta / Google) — mismo mes.
+    # ----------------------------------------------------------------------- #
+    st.markdown("##### Por plataforma")
+    _leads = datos_real.leads
+    _deals = datos_real.deals
+    plataformas = [
+        ("Meta Ads", "Meta", datos_real.meta),
+        ("Google Ads", "Google", datos_real.google),
+    ]
+    pcols = st.columns(2)
+    for pcol, (nombre_plat, fuente, df_ads) in zip(pcols, plataformas):
+        plan_p = plan_conn.plan_plataforma_mes(data, nombre_plat, mes_sel.lower())
+        inv_real = float(df_ads["coste"].sum()) if not df_ads.empty else 0.0
+        leads_real = int((_leads["fuente"] == fuente).sum()) if "fuente" in _leads else 0
+        matr_real = int(((_deals.get("es_ganado", False)) & (_deals.get("fuente") == fuente)).sum()) \
+            if not _deals.empty and "fuente" in _deals else 0
+        filas_p = [
+            _fila_pacing("Inversión", inv_real, plan_p.get("inversion"), lambda v: eur(v), fraccion),
+            _fila_pacing("Leads", leads_real, plan_p.get("leads"), lambda v: num(v), fraccion),
+            _fila_pacing("Matrículas", matr_real, plan_p.get("matriculas"), lambda v: num(v), fraccion),
+        ]
+        with pcol:
+            st.markdown(f"**{nombre_plat}**")
+            st.dataframe(pd.DataFrame(filas_p), hide_index=True, width="stretch")
+    st.caption(
+        "**Inversión** y **Leads** por plataforma son reales del mes (Meta/Google · fuente UTM en "
+        "HubSpot). **Matrículas** por plataforma = negocios ganados cuyo lead trae UTM de esa "
+        "plataforma (los leads sin UTM no se reparten); refleja el estado vivo del pipeline."
+    )
 
 st.divider()
 st.subheader("Detalle del plan")

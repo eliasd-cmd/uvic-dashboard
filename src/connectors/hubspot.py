@@ -198,15 +198,15 @@ def _fetch_deals(creds: dict) -> pd.DataFrame:
         if not after:
             break
 
-    # Mapa deal -> programa vía contacto asociado (best-effort).
+    # Mapa deal -> {programa, fuente, webinar} vía contacto asociado (best-effort).
     deal_ids = [d["id"] for d in deals]
     info_por_deal = _programa_por_deal(token, deal_ids) if deal_ids else {}
-    prog_por_deal = {k: v["programa"] for k, v in info_por_deal.items()}
 
     filas = []
     for d in deals:
+        info = info_por_deal.get(d.get("id"), {})
         # Excluir deals de leads de webinar (van a la hoja de Leads Importados).
-        if info_por_deal.get(d.get("id"), {}).get("webinar"):
+        if info.get("webinar"):
             continue
         p = d.get("properties", {})
         etapa_id = p.get("dealstage") or ""
@@ -215,7 +215,8 @@ def _fetch_deals(creds: dict) -> pd.DataFrame:
             fecha_creacion=_a_fecha(p.get("createdate")),
             etapa_id=etapa_id,
             etapa=config.HUBSPOT_ETAPAS_MAP.get(etapa_id, etapa_id),
-            programa=prog_por_deal.get(d.get("id"), "Sin asignar"),
+            programa=info.get("programa", "Sin asignar"),
+            fuente=info.get("fuente", "Sin UTM"),
             amount=float(p.get("amount") or 0),
             es_ganado=(etapa_id == config.HUBSPOT_STAGE_MATRICULA),
         ))
@@ -270,6 +271,8 @@ def _programa_por_deal(token: str, deal_ids: list[str]) -> dict:
         p = props_por_contacto.get(cid, {})
         out[did] = dict(
             programa=config.programa_por_curso(p.get("uvic_curso") or ""),
+            # Fuente (Meta/Google/Sin UTM) del contacto → permite matrículas por plataforma.
+            fuente=config.plataforma_por_utm(p.get("uvic_utm_source"), p.get("uvic_utm_medium")),
             webinar=config.excluir_webinar(p.get("uvic_utm_campaign"),
                                            p.get("uvic_utm_source"), p.get("uvic_utm_medium")),
         )

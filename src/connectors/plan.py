@@ -163,6 +163,21 @@ def plan_total_mes(data: dict, mes: str) -> dict:
     )
 
 
+def plan_plataforma_mes(data: dict, plataforma: str, mes: str) -> dict:
+    """Objetivos del plan de una plataforma ('Meta Ads'/'Google Ads') para un mes.
+    Devuelve {inversion, leads, cpl, matriculas}."""
+    for b in (data or {}).get("Por Plataforma", []):
+        if b.get("nombre", "").strip().lower() == plataforma.strip().lower():
+            m = valores_mes(b, mes)
+            return dict(
+                inversion=m.get("mkt presu."),
+                leads=m.get("leads"),
+                cpl=m.get("cpl"),
+                matriculas=m.get("ventas netas totales"),
+            )
+    return {}
+
+
 def obtener_plan():
     """Devuelve (estructura, origen, detalle).
 
