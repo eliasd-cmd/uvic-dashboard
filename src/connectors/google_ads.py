@@ -82,11 +82,13 @@ def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
         WHERE segments.date BETWEEN '{desde}' AND '{hasta}'
     """
     filas = []
+    con_datos = set()
     for batch in ga_service.search_stream(customer_id=customer_id, query=query):
         for row in batch.results:
             nombre = row.campaign.name
             if not config.es_campana_werise(nombre):
-                continue  # acotamos al scope WeRise del dashboard
+                continue  # acotamos al scope WeRise (cualquier campaña 'WeRise…')
+            con_datos.add(nombre)
             filas.append(dict(
                 fecha=pd.to_datetime(row.segments.date).date(),
                 plataforma="Google Ads",
@@ -96,4 +98,23 @@ def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
                 coste=round(row.metrics.cost_micros / 1_000_000, 2),
                 conversiones=int(row.metrics.conversions),
             ))
+
+    # Incluir TODAS las campañas WeRise (aunque estén pausadas o sin gasto en el
+    # periodo) con una fila a cero, para que siempre se muestren en el dashboard.
+    try:
+        q_lista = "SELECT campaign.name FROM campaign WHERE campaign.status != 'REMOVED'"
+        for batch in ga_service.search_stream(customer_id=customer_id, query=q_lista):
+            for row in batch.results:
+                nombre = row.campaign.name
+                if config.es_campana_werise(nombre) and nombre not in con_datos:
+                    con_datos.add(nombre)
+                    filas.append(dict(
+                        fecha=pd.to_datetime(hasta).date(),
+                        plataforma="Google Ads",
+                        campana=nombre,
+                        impresiones=0, clics=0, coste=0.0, conversiones=0,
+                    ))
+    except Exception:  # noqa: BLE001
+        pass  # si la consulta de lista falla, mostramos solo las que tienen datos
+
     return pd.DataFrame(filas)

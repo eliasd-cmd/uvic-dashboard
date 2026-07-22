@@ -7,6 +7,7 @@ campañas viven aquí para que las páginas y los conectores lean de una
 """
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass, field
 
 # --------------------------------------------------------------------------- #
@@ -147,25 +148,45 @@ PROGRAMAS: list[Programa] = [
 ]
 
 
+def _normalizar(texto: str) -> str:
+    """Minúsculas, sin acentos y solo alfanuméricos: unifica nombres de campaña
+    de Google (ASCII) y Meta (con acentos), y tolera separadores _ - espacio ·."""
+    t = unicodedata.normalize("NFKD", texto or "")
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    return "".join(c for c in t.lower() if c.isalnum())
+
+
+# Palabras clave distintivas por programa (normalizadas). Sirven para asignar
+# CUALQUIER variante de campaña (Search, PMAX, DemandGen, Meta…) a su programa.
+_KEYWORDS_PROGRAMA = {
+    "MBA Executive": ("mbaexecutive", "executivemba"),
+    "Marketing Deportivo": ("marquetingesportiu", "sportmanagement", "gestioimarqueting"),
+    "Documentación Social": ("documentalsocial",),
+    "Comunicación Científica": ("comunicaciocientifica", "comunicaciocientifica"),
+    "Liderazgo IA": ("lideratgeia", "lideraenentorns", "intelligencia"),
+}
+
+
 def programa_por_campana(nombre_campana: str) -> str:
     """Devuelve el nombre del programa dado el nombre de campaña (Google o Meta).
 
-    Hace una coincidencia laxa por prefijo para tolerar sufijos y variaciones.
+    Coincide por palabra clave normalizada, así reconoce todas las variantes
+    (WeRise_Search_…, WeRise_PMAX_…, WeRise-DemandGen_…, nombres de Meta…).
     """
     if not nombre_campana:
         return "Sin asignar"
-    n = nombre_campana.strip().lower()
-    for p in PROGRAMAS:
-        for c in (p.campana_google, p.campana_meta):
-            if n.startswith(c.lower()) or c.lower() in n:
-                return p.nombre
+    n = _normalizar(nombre_campana)
+    for prog, claves in _KEYWORDS_PROGRAMA.items():
+        if any(k in n for k in claves):
+            return prog
     return "Otras / Branding"
 
 
 def es_campana_werise(nombre_campana: str) -> bool:
-    """True si la campaña pertenece a uno de los 5 programas WeRise (para acotar
-    los datos en vivo de Google/Meta al scope del dashboard)."""
-    return programa_por_campana(nombre_campana) not in ("Otras / Branding", "Sin asignar")
+    """True si la campaña es nuestra: cualquier campaña cuyo nombre empiece por
+    'WeRise' (Google o Meta). Así las campañas nuevas aparecen automáticamente,
+    sin tener que mantener una lista fija de programas."""
+    return _normalizar(nombre_campana).startswith("werise")
 
 
 def es_webinar(utm_campaign: str) -> bool:

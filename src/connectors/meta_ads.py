@@ -67,6 +67,7 @@ def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
         "limit": 500,
     }
     filas = []
+    con_datos = set()
     while url:
         resp = requests.get(url, params=params, timeout=60)
         resp.raise_for_status()
@@ -74,7 +75,8 @@ def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
         for row in data.get("data", []):
             nombre = row.get("campaign_name", "")
             if not config.es_campana_werise(nombre):
-                continue  # acotamos al scope WeRise del dashboard
+                continue  # acotamos al scope WeRise (cualquier campaña 'WeRise…')
+            con_datos.add(nombre)
             # OJO: Meta reporta el MISMO lead bajo dos action_type ("lead" y
             # "offsite_conversion.fb_pixel_lead"). Sumarlos duplica → tomamos el máximo.
             vals = [
@@ -94,6 +96,27 @@ def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
             ))
         url = data.get("paging", {}).get("next")
         params = None  # la URL 'next' ya trae los parámetros
+
+    # Incluir TODAS las campañas WeRise (aunque estén pausadas o sin gasto en el
+    # periodo) con una fila a cero, para que siempre se muestren en el dashboard.
+    try:
+        r = requests.get(
+            f"https://graph.facebook.com/{version}/{account}/campaigns",
+            params={"fields": "name,effective_status", "limit": 500, "access_token": token},
+            timeout=60)
+        for cp in r.json().get("data", []):
+            nombre = cp.get("name", "")
+            if config.es_campana_werise(nombre) and nombre not in con_datos:
+                con_datos.add(nombre)
+                filas.append(dict(
+                    fecha=pd.to_datetime(hasta).date(),
+                    plataforma="Meta Ads",
+                    campana=nombre,
+                    impresiones=0, clics=0, coste=0.0, conversiones=0,
+                ))
+    except Exception:  # noqa: BLE001
+        pass
+
     return pd.DataFrame(filas)
 
 
