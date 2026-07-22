@@ -189,6 +189,13 @@ def es_campana_werise(nombre_campana: str) -> bool:
     return _normalizar(nombre_campana).startswith("werise")
 
 
+def clave_campana(nombre: str) -> str:
+    """Clave normalizada para emparejar un mismo nombre de campaña entre la
+    plataforma (Google/Meta) y la `uvic_utm_campaign` de HubSpot, tolerando
+    mayúsculas, acentos y separadores (p.ej. 'Werise-DemandGen' == 'WeRise_DemandGen')."""
+    return _normalizar(nombre)
+
+
 def estado_legible(raw: str) -> str:
     """Normaliza el estado de una campaña (Google: ENABLED/PAUSED; Meta:
     ACTIVE/PAUSED/…) a una etiqueta en español."""

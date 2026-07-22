@@ -79,7 +79,12 @@ else:
 st.subheader("Comparativa de medición por campaña")
 st.caption("Resultados según cada fuente: Meta (plataforma) · HubSpot (leads con `uvic_utm_campaign`) · GA4 (eventos clave de fuentes meta/fb/ig).")
 _mm = df.groupby("campana")["conversiones"].sum().astype(int)
-_lh = (leads_meta_hs.groupby("campana").size() if n_leads_hs else None)
+# Emparejar leads↔campaña por clave normalizada (tolera mayúsculas/separadores en la UTM).
+_lh = {}
+if n_leads_hs:
+    _tmp = leads_meta_hs.copy()
+    _tmp["_k"] = _tmp["campana"].map(config.clave_campana)
+    _lh = _tmp.groupby("_k").size().to_dict()
 _gm = datos.ga4_campana
 _gv = None
 if not _gm.empty and {"fuente", "campana", "eventos_clave"}.issubset(_gm.columns):
@@ -91,7 +96,7 @@ for camp in _mm.index:
     _comp.append(dict(
         campana=camp,
         resultados_meta=int(_mm.get(camp, 0)),
-        leads_hubspot=int(_lh.get(camp, 0)) if _lh is not None else 0,
+        leads_hubspot=int(_lh.get(config.clave_campana(camp), 0)),
         eventos_ga4=int(_gv.get(camp, 0)) if _gv is not None else 0,
     ))
 import pandas as _pd
@@ -125,8 +130,8 @@ tab = camp[_cols_base].copy()
 tab["ctr"] = (tab["ctr"] * 100).round(2)  # ratio -> %
 tab["cpl_meta"] = tab.apply(
     lambda r: r["coste"] / r["conversiones"] if r["conversiones"] else 0, axis=1)
-_map_lh = leads_meta_hs.groupby("campana").size().to_dict() if n_leads_hs else {}
-tab["leads_hubspot"] = tab["campana"].map(_map_lh).fillna(0).astype(int)
+tab["leads_hubspot"] = tab["campana"].map(
+    lambda c: _lh.get(config.clave_campana(c), 0)).astype(int)
 _cols_tab = ["campana", "programa", "impresiones", "clics", "ctr", "cpc", "coste",
              "conversiones", "cpl_meta", "leads_hubspot"]
 if "estado" in tab.columns:
