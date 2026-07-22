@@ -82,18 +82,19 @@ if n_leads_g:
     _tmp["_k"] = _tmp["campana"].map(config.clave_campana)
     _lh = _tmp.groupby("_k").size().to_dict()
 _gc = datos.ga4_campana
-_gv = None
+# Eventos GA4 por campaña, emparejados por clave normalizada (igual que los leads).
+_gv = {}
 if not _gc.empty and {"fuente", "campana", "eventos_clave"}.issubset(_gc.columns):
     _g = _gc[_gc["fuente"].str.lower() == "google"].copy()
-    _g["campana"] = _g["campana"].str.replace("+", " ", regex=False)
-    _gv = _g.groupby("campana")["eventos_clave"].sum()
+    _g["_k"] = _g["campana"].map(config.clave_campana)
+    _gv = _g.groupby("_k")["eventos_clave"].sum().to_dict()
 _comp = []
 for _camp in _gg.index:
     _comp.append(dict(
         campana=_camp,
         resultados_google=int(_gg.get(_camp, 0)),
         leads_hubspot=int(_lh.get(config.clave_campana(_camp), 0)),
-        eventos_ga4=int(_gv.get(_camp, 0)) if _gv is not None else 0,
+        eventos_ga4=int(_gv.get(config.clave_campana(_camp), 0)),
     ))
 import pandas as _pd
 ui.tabla_totales(
