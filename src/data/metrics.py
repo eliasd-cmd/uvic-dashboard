@@ -46,15 +46,15 @@ def resumen_campana(df_ads: pd.DataFrame) -> pd.DataFrame:
     """Agrega por campaña y añade el programa académico asociado."""
     if df_ads.empty:
         return pd.DataFrame()
-    g = (
-        df_ads.groupby(["plataforma", "campana"], as_index=False)
-        .agg(
-            impresiones=("impresiones", "sum"),
-            clics=("clics", "sum"),
-            coste=("coste", "sum"),
-            conversiones=("conversiones", "sum"),
-        )
+    agg = dict(
+        impresiones=("impresiones", "sum"),
+        clics=("clics", "sum"),
+        coste=("coste", "sum"),
+        conversiones=("conversiones", "sum"),
     )
+    if "estado" in df_ads.columns:
+        agg["estado"] = ("estado", "first")  # el estado es constante por campaña
+    g = df_ads.groupby(["plataforma", "campana"], as_index=False).agg(**agg)
     g["programa"] = g["campana"].map(config.programa_por_campana)
     g["ctr"] = g.apply(lambda r: _safe_div(r["clics"], r["impresiones"]), axis=1)
     g["cpc"] = g.apply(lambda r: _safe_div(r["coste"], r["clics"]), axis=1)

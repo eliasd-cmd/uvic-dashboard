@@ -74,6 +74,7 @@ def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
         SELECT
             segments.date,
             campaign.name,
+            campaign.status,
             metrics.impressions,
             metrics.clicks,
             metrics.cost_micros,
@@ -93,6 +94,7 @@ def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
                 fecha=pd.to_datetime(row.segments.date).date(),
                 plataforma="Google Ads",
                 campana=nombre,
+                estado=config.estado_legible(row.campaign.status.name),
                 impresiones=int(row.metrics.impressions),
                 clics=int(row.metrics.clicks),
                 coste=round(row.metrics.cost_micros / 1_000_000, 2),
@@ -102,7 +104,7 @@ def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
     # Incluir TODAS las campañas WeRise (aunque estén pausadas o sin gasto en el
     # periodo) con una fila a cero, para que siempre se muestren en el dashboard.
     try:
-        q_lista = "SELECT campaign.name FROM campaign WHERE campaign.status != 'REMOVED'"
+        q_lista = "SELECT campaign.name, campaign.status FROM campaign WHERE campaign.status != 'REMOVED'"
         for batch in ga_service.search_stream(customer_id=customer_id, query=q_lista):
             for row in batch.results:
                 nombre = row.campaign.name
@@ -112,6 +114,7 @@ def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
                         fecha=pd.to_datetime(hasta).date(),
                         plataforma="Google Ads",
                         campana=nombre,
+                        estado=config.estado_legible(row.campaign.status.name),
                         impresiones=0, clics=0, coste=0.0, conversiones=0,
                     ))
     except Exception:  # noqa: BLE001

@@ -118,17 +118,22 @@ ui.linea_temporal(serie, x="fecha", y="coste", color=None, titulo="Inversión �
 st.subheader("Rendimiento por campaña")
 ui.barras(camp, x="coste", y="campana", color="programa",
           titulo="Inversión por campaña", orientacion="h")
-tab = camp[["campana", "programa", "impresiones", "clics", "ctr", "cpc", "coste",
-            "conversiones"]].copy()
+_cols_base = ["campana", "programa", "impresiones", "clics", "ctr", "cpc", "coste", "conversiones"]
+if "estado" in camp.columns:
+    _cols_base.insert(1, "estado")
+tab = camp[_cols_base].copy()
 tab["ctr"] = (tab["ctr"] * 100).round(2)  # ratio -> %
 tab["cpl_meta"] = tab.apply(
     lambda r: r["coste"] / r["conversiones"] if r["conversiones"] else 0, axis=1)
 _map_lh = leads_meta_hs.groupby("campana").size().to_dict() if n_leads_hs else {}
 tab["leads_hubspot"] = tab["campana"].map(_map_lh).fillna(0).astype(int)
+_cols_tab = ["campana", "programa", "impresiones", "clics", "ctr", "cpc", "coste",
+             "conversiones", "cpl_meta", "leads_hubspot"]
+if "estado" in tab.columns:
+    _cols_tab.insert(2, "estado")
 ui.tabla_totales(
     tab,
-    columnas=["campana", "programa", "impresiones", "clics", "ctr", "cpc", "coste",
-              "conversiones", "cpl_meta", "leads_hubspot"],
+    columnas=_cols_tab,
     sum_cols=["impresiones", "clics", "coste", "conversiones", "leads_hubspot"],
     ratios={
         "ctr": ("clics", "impresiones", 100, "%"),
@@ -136,7 +141,7 @@ ui.tabla_totales(
         "cpl_meta": ("coste", "conversiones", 1, " €"),
     },
     column_config={
-        "campana": "Campaña", "programa": "Programa",
+        "campana": "Campaña", "programa": "Programa", "estado": "Estado",
         "impresiones": st.column_config.NumberColumn("Impr.", format="%d"),
         "clics": st.column_config.NumberColumn("Clics", format="%d"),
         "ctr": st.column_config.NumberColumn("CTR", format="%.2f%%"),

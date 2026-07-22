@@ -189,6 +189,19 @@ def es_campana_werise(nombre_campana: str) -> bool:
     return _normalizar(nombre_campana).startswith("werise")
 
 
+def estado_legible(raw: str) -> str:
+    """Normaliza el estado de una campaña (Google: ENABLED/PAUSED; Meta:
+    ACTIVE/PAUSED/…) a una etiqueta en español."""
+    r = (raw or "").upper()
+    if r in ("ENABLED", "ACTIVE"):
+        return "Activa"
+    if "PAUSED" in r:
+        return "Pausada"
+    if r in ("REMOVED", "ARCHIVED", "DELETED"):
+        return "Archivada"
+    return "Otra"
+
+
 def es_webinar(utm_campaign: str) -> bool:
     """True si uvic_utm_campaign contiene 'webinar' (p.ej. 'WebInar',
     'WEBINAR EMBA - IA ABRIL')."""

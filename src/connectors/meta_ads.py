@@ -57,6 +57,18 @@ def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
     account = creds.get("ad_account_id", config.META_AD_ACCOUNT_ID)
     token = creds["access_token"]
 
+    # Estado (effective_status) de todas las campañas → mapa nombre→estado legible.
+    estados = {}
+    try:
+        rc = requests.get(
+            f"https://graph.facebook.com/{version}/{account}/campaigns",
+            params={"fields": "name,effective_status", "limit": 500, "access_token": token},
+            timeout=60)
+        for cp in rc.json().get("data", []):
+            estados[cp.get("name", "")] = config.estado_legible(cp.get("effective_status"))
+    except Exception:  # noqa: BLE001
+        pass
+
     url = f"https://graph.facebook.com/{version}/{account}/insights"
     params = {
         "level": "campaign",
@@ -89,6 +101,7 @@ def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
                 fecha=pd.to_datetime(row["date_start"]).date(),
                 plataforma="Meta Ads",
                 campana=nombre,
+                estado=estados.get(nombre, "Otra"),
                 impresiones=int(row.get("impressions", 0)),
                 clics=int(row.get("clicks", 0)),
                 coste=round(float(row.get("spend", 0)), 2),
@@ -99,23 +112,16 @@ def _consultar_api(creds: dict, desde, hasta) -> pd.DataFrame:
 
     # Incluir TODAS las campañas WeRise (aunque estén pausadas o sin gasto en el
     # periodo) con una fila a cero, para que siempre se muestren en el dashboard.
-    try:
-        r = requests.get(
-            f"https://graph.facebook.com/{version}/{account}/campaigns",
-            params={"fields": "name,effective_status", "limit": 500, "access_token": token},
-            timeout=60)
-        for cp in r.json().get("data", []):
-            nombre = cp.get("name", "")
-            if config.es_campana_werise(nombre) and nombre not in con_datos:
-                con_datos.add(nombre)
-                filas.append(dict(
-                    fecha=pd.to_datetime(hasta).date(),
-                    plataforma="Meta Ads",
-                    campana=nombre,
-                    impresiones=0, clics=0, coste=0.0, conversiones=0,
-                ))
-    except Exception:  # noqa: BLE001
-        pass
+    for nombre, est in estados.items():
+        if config.es_campana_werise(nombre) and nombre not in con_datos:
+            con_datos.add(nombre)
+            filas.append(dict(
+                fecha=pd.to_datetime(hasta).date(),
+                plataforma="Meta Ads",
+                campana=nombre,
+                estado=est,
+                impresiones=0, clics=0, coste=0.0, conversiones=0,
+            ))
 
     return pd.DataFrame(filas)
 
