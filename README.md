@@ -74,5 +74,24 @@ Dashboard/
 
 ## Despliegue en Streamlit Cloud
 
-Sube el repo (sin `secrets.toml`) y pega las credenciales en **App settings →
-Secrets** con el mismo formato del `.example`.
+| | |
+|---|---|
+| **Repositorio** | `WeRise-ESP/uvic-dashboard` (privado, rama `main`) |
+| **App en producción** | https://uvic-dashboard.streamlit.app |
+| **Main file path** | `app.py` |
+
+**Actualizar la app = hacer `git push` a `main`.** Streamlit Cloud redespliega
+solo; no hay que hacer nada más.
+
+### Credenciales
+`secrets.toml` **no está en el repo** (lo protege `.gitignore`). Viven solo en
+**App settings → Secrets** del panel de Streamlit, con el mismo formato que
+`.streamlit/secrets.toml.example`. La service account de GA4 va **en línea**
+como `[ga4.service_account]`, no como fichero.
+
+### Accesos
+- **Administrar la app** (redeploy, secrets, invitados): cualquier miembro de
+  WeRise-ESP con acceso al repositorio.
+- **Ver el dashboard**: lista de invitados por email en **App settings →
+  Sharing**. Esa lista vive en la app, no en el repo — si algún día se recrea la
+  app, hay que volver a introducirla.
